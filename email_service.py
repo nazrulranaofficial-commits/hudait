@@ -11,7 +11,7 @@ from flask import render_template_string
 
 # --- CONFIGURATION ---
 # Change this to your live domain when deploying
-WEB_PORTAL_URL = "http://192.168.0.6:5000"
+WEB_PORTAL_URL = "https://hudaitsolutions.onrender.com"
 
 def _get_html_template(company_details, title, preheader, body_content):
     """
@@ -504,4 +504,5 @@ def send_service_reactivated_email(customer_email, customer_name, company_id):
     """
     
     html_body = _get_html_template(company_details, title, preheader, body)
+
     return _send_email(company_details, customer_email, title, html_body)
