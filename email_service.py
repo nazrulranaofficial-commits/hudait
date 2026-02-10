@@ -1,5 +1,6 @@
 import smtplib
 import os
+import socket # Added for network debugging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -107,15 +108,34 @@ def _get_html_template(company_details, title, preheader, body_content):
 
 
 def _send_email(company_details, to_email, subject, html_body, attachment_path=None):
+    """
+    Sends an email using the configured SMTP server.
+    Supports both Port 587 (TLS) and Port 465 (SSL).
+    Fallbacks to OS Environment Variables if company_details are missing keys.
+    """
     
+    # 1. Try fetching from the Dictionary (DB)
     smtp_host = company_details.get('smtp_host')
-    
-    smtp_port_value = company_details.get('smtp_port')
-    smtp_port = int(smtp_port_value) if smtp_port_value is not None else 587
-    
+    smtp_port_val = company_details.get('smtp_port')
     smtp_user = company_details.get('smtp_user')
     smtp_pass = company_details.get('smtp_pass')
     
+    # 2. Fallback to OS Environment Variables (Render Settings) if missing
+    if not smtp_host:
+        smtp_host = os.environ.get('SMTP_HOST')
+    if not smtp_port_val:
+        smtp_port_val = os.environ.get('SMTP_PORT', 587) # Default to 587
+    if not smtp_user:
+        smtp_user = os.environ.get('SMTP_USER')
+    if not smtp_pass:
+        smtp_pass = os.environ.get('SMTP_PASSWORD')
+
+    # Convert port to int safely
+    try:
+        smtp_port = int(smtp_port_val)
+    except:
+        smtp_port = 587
+
     # --- Smart sender_name logic ---
     sender_name = company_details.get('sender_name', 
                     company_details.get('app_name', 'ISP Support'))
@@ -124,7 +144,7 @@ def _send_email(company_details, to_email, subject, html_body, attachment_path=N
 
     if not all([smtp_host, smtp_port, smtp_user, smtp_pass]):
         print("Email Error: SMTP settings are incomplete. Cannot send email.")
-        return False, "SMTP settings are not configured in Company Settings."
+        return False, "SMTP settings are not configured."
         
     try:
         msg = MIMEMultipart('mixed')
@@ -147,9 +167,19 @@ def _send_email(company_details, to_email, subject, html_body, attachment_path=N
             )
             
             msg.attach(part)
-            
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        
+        # --- NEW CONNECTION LOGIC (SSL VS TLS) ---
+        print(f"Connecting to SMTP {smtp_host}:{smtp_port}...")
+        
+        if smtp_port == 465:
+            # Use SSL directly (Fixes Errno 101 on Render)
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+        else:
+            # Use Standard TLS
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
             server.starttls() 
+
+        with server:
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
             print(f"Email successfully sent to {to_email}")
@@ -158,6 +188,11 @@ def _send_email(company_details, to_email, subject, html_body, attachment_path=N
 
     except Exception as e:
         print(f"Email Sending Error: {e}")
+        # Detailed debugging if it fails
+        try:
+            print(f"DNS Resolution for {smtp_host}: {socket.gethostbyname(smtp_host)}")
+        except:
+            print("DNS Resolution Failed")
         return False, str(e)
 
 def send_invoice_email(customer_email, customer_name, invoice_data, company_details, pdf_attachment_path):
@@ -504,5 +539,4 @@ def send_service_reactivated_email(customer_email, customer_name, company_id):
     """
     
     html_body = _get_html_template(company_details, title, preheader, body)
-
     return _send_email(company_details, customer_email, title, html_body)
