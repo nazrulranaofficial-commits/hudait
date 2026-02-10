@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-primary: #5A67D8; --color-primary-dark: #434190;
+            --color-success: #10b981; --color-danger: #ef4444;
+            --color-text-dark: #1a202c; --color-text-light: #64748b;
+            --color-border: #e2e8f0; --color-bg-light: #f8fafc;
+        }
+        body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f5f5f5; color: var(--color-text-light); }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; box-sizing: border-box; }
+        
+        /* HEADER */
+        .header { background-color: #ffffff; position: sticky; top: 0; z-index: 900; box-shadow: 0 1px 4px rgba(0,0,0,0.05); padding: 0.8rem 0; margin-bottom: 2rem; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 1rem; min-height: 40px; }
+        .header-left { display: flex; align-items: center; gap: 1rem; z-index: 10; }
+        .logo { max-height: 40px; width: auto; }
+        .logo-link-desktop { display: block; }
+        .logo-link-mobile { display: none; }
+        .mobile-menu-toggle { display: none; font-size: 1.4rem; color: var(--color-text-dark); cursor: pointer; width: 40px; height: 40px; align-items: center; justify-content: flex-start; }
+        .nav-links-desktop { display: flex; align-items: center; gap: 1.5rem; }
+        .nav-links-desktop a { color: var(--color-text-dark); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+        .nav-links-desktop a:hover { color: var(--color-primary); }
+        .btn-cart { background-color: var(--color-primary); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; height: 40px; box-sizing: border-box; z-index: 10; }
+        .cart-badge { background-color: white; color: var(--color-primary); font-size: 0.75rem; font-weight: 800; padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
+
+        /* MOBILE MENU */
+        .mobile-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1999; }
+        .mobile-menu-overlay.active { display: block; }
+        .mobile-sidebar-nav { display: none; position: fixed; left: -300px; top: 0; bottom: 0; width: 280px; z-index: 2000; background-color: #ffffff; overflow-y: auto; transition: left 0.3s ease; padding: 1.5rem; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        .mobile-sidebar-nav.active { display: flex; left: 0; }
+        .mobile-menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #f0f0f0; padding-bottom: 1rem; }
+        .mobile-menu-title { font-size: 1.2rem; font-weight: 800; color: var(--color-text-dark); }
+        .close-menu { font-size: 1.8rem; cursor: pointer; color: var(--color-text-light); line-height: 0.8; }
+        .mobile-nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; font-size: 1rem; font-weight: 600; color: var(--color-text-dark); text-decoration: none; border-bottom: 1px solid #f8faff; transition: color 0.2s; }
+        .mobile-nav-item i { width: 24px; text-align: center; color: var(--color-text-light); }
+        .mobile-cat-title { margin-top: 2rem; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 700; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 1px; }
+        .mobile-cat-item { display: block; padding: 10px 14px; font-size: 0.95rem; color: var(--color-text-dark); text-decoration: none; border-radius: 8px; background: #f8fafc; transition: all 0.2s; font-weight: 500; margin-bottom: 6px; }
+        .mobile-cat-item:hover { background: #eff6ff; color: var(--color-primary); }
+
+        /* CHECKOUT */
+        .page-title { font-size: 2rem; font-weight: 800; color: var(--color-text-dark); margin: 0 0 1.5rem 0; }
+        .checkout-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: flex-start; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--color-border); padding: 1.5rem; }
+        .section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); color: var(--color-text-dark); }
+        
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text-dark); }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; font-family: inherit; font-size: 1rem; box-sizing: border-box; background: #fff; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.1); }
+        
+        .btn-pay { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 1rem; border: none; cursor: pointer; margin-bottom: 1rem; transition: all 0.2s; }
+        .btn-cod { background: #f8fafc; color: var(--color-text-dark); border: 1px solid var(--color-border); }
+        .btn-cod:hover { background: #e2e8f0; }
+        .btn-online { background: var(--color-primary); color: white; }
+        .btn-online:hover { background: var(--color-primary-dark); }
+
+        .summary-item { display: flex; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9; }
+        .summary-img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; border: 1px solid var(--color-border); }
+        .summary-info h4 { font-size: 0.95rem; margin: 0 0 4px 0; color: var(--color-text-dark); }
+        .summary-info p { margin: 0; font-size: 0.85rem; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-size: 0.95rem; }
+        .summary-total { font-weight: 800; font-size: 1.2rem; color: var(--color-text-dark); margin-top: 1rem; border-top: 1px solid var(--color-border); padding-top: 1rem; }
+
+        .company-footer { text-align: center; margin-top: 3rem; padding: 2rem; border-top: 1px solid var(--color-border); color: var(--color-text-light); font-size: 0.9rem; }
+
+        @media (max-width: 992px) {
+            .mobile-menu-toggle { display: flex; }
+            .nav-links-desktop { display: none; }
+            .logo-link-desktop { display: none; }
+            .logo-link-mobile { display: block; position: absolute; left: 50%; transform: translateX(-50%); }
+            .btn-cart .cart-text { display: none; }
+            .checkout-grid { grid-template-columns: 1fr; }
+            .card { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="mobile-menu-overlay" id="mobileOverlay" onclick="toggleMenu()"></div>
+    <aside class="mobile-sidebar-nav" id="mobileSidebar">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <div class="close-menu" onclick="toggleMenu()">&times;</div>
+        </div>
+        <div class="mobile-links">
+            <a href="{{ url_for('purchase_plans') }}" class="mobile-nav-item"><i class="fas fa-home"></i> Home</a>
+            <a href="{{ url_for('shop') }}" class="mobile-nav-item"><i class="fas fa-shopping-bag"></i> Shop</a>
+            <a href="{{ url_for('product_track') }}" class="mobile-nav-item"><i class="fas fa-search-location"></i> Track</a>
+            <a href="{{ url_for('contact_us') }}" class="mobile-nav-item"><i class="fas fa-envelope"></i> Contact</a>
+        </div>
+        <div class="mobile-cat-title">Categories</div>
+        <div class="mobile-cat-list">
+            <a href="{{ url_for('shop') }}" class="mobile-cat-item">All Categories</a>
+            {% if categories %}
+                {% for category in categories %}
+                <a href="{{ url_for('shop', category=category.id) }}" class="mobile-cat-item">{{ category.name }}</a>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="container header-inner">
+            <div class="header-left">
+                <div class="mobile-menu-toggle" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+                <a href="{{ url_for('purchase_plans') }}" class="logo-link-desktop">
+                    <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="Logo" class="logo">
+                </a>
+            </div>
+            <a href="{{ url_for('purchase_plans') }}" class="logo-link-mobile">
+                <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="Logo" class="logo">
+            </a>
+            <nav class="nav-links-desktop">
+                <a href="{{ url_for('purchase_plans') }}">Home</a>
+                <a href="{{ url_for('shop') }}">Shop</a>
+                <a href="{{ url_for('product_track') }}">Track</a>
+            </nav>
+            <a href="{{ url_for('cart') }}" class="btn-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-text">Cart</span>
+                {% if cart_item_count > 0 %}
+                <span class="cart-badge">{{ cart_item_count }}</span>
+                {% endif %}
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 class="page-title">Checkout</h1>
+
+        <div class="checkout-grid">
+            <div class="card">
+                <div class="section-title">Shipping & Contact</div>
+                <form method="POST">
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" name="full_name" class="form-input" value="{{ prefill.name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-input" value="{{ prefill.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="text" name="phone" class="form-input" value="{{ prefill.phone }}" required>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Division <span style="color: red;">*</span></label>
+                            <select id="division" name="division" class="form-select" required>
+                                <option value="" disabled selected>Select Division</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">District <span style="color: red;">*</span></label>
+                            <select id="district" name="district" class="form-select" required disabled>
+                                <option value="" disabled selected>Select District</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Upazila / Thana <span style="color: red;">*</span></label>
+                        <select id="thana" name="thana" class="form-select" required disabled>
+                            <option value="" disabled selected>Select Upazila</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">House / Road / Street Address</label>
+                        <textarea name="address" class="form-textarea" rows="3" required>{{ prefill.address }}</textarea>
+                    </div>
+                    
+                    <div class="section-title" style="margin-top: 2rem;">Payment Method</div>
+                    <button type="submit" name="payment_method" value="cod" class="btn-pay btn-cod">
+                        <i class="fas fa-truck"></i> Cash on Delivery
+                    </button>
+                    <button type="submit" name="payment_method" value="pay_now" class="btn-pay btn-online">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </button>
+                </form>
+            </div>
+
+            <div class="card" style="height: fit-content; position: sticky; top: 100px;">
+                <div class="section-title">Order Summary</div>
+                
+                {% for item in cart_products %}
+                <div class="summary-item">
+                    <img src="{{ item.image_url or 'https://via.placeholder.com/60' }}" class="summary-img">
+                    <div class="summary-info">
+                        <h4>{{ item.name }}</h4>
+                        <p>
+                            Qty: {{ item.quantity }} × 
+                            {% set orig = item.original_price | float %}
+                            {% set final = item.final_price_per_item | float %}
+                            
+                            {% if orig > final %}
+                                <span style="color: #ef4444; font-weight: 700;">{{ "%.2f"|format(final) }}</span>
+                                <span style="text-decoration: line-through; color: #9aa5b1; font-size: 0.8rem;">{{ "%.2f"|format(orig) }}</span>
+                            {% else %}
+                                {{ "%.2f"|format(final) }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div style="font-weight: 600;">{{ "%.2f"|format(item.subtotal) }}</div>
+                </div>
+                {% endfor %}
+
+                <div class="summary-row" style="margin-top: 1rem;">
+                    <span>Subtotal</span>
+                    <span>{{ "%.2f"|format(subtotal) }} BDT</span>
+                </div>
+                {% if discount_amount > 0 %}
+                <div class="summary-row" style="color: var(--color-success);">
+                    <span>Discount</span>
+                    <span>- {{ "%.2f"|format(discount_amount) }} BDT</span>
+                </div>
+                {% endif %}
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <span>{{ "%.2f"|format(shipping_cost) }} BDT</span>
+                </div>
+                <div class="summary-row summary-total">
+                    <span>Total to Pay</span>
+                    <span>{{ "%.2f"|format(total_price) }} BDT</span>
+                </div>
+            </div>
+        </div>
+
+        <footer class="company-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('mobileSidebar').classList.toggle('active');
+            document.getElementById('mobileOverlay').classList.toggle('active');
+        }
+
+        // ADDRESS API LOGIC
+        document.addEventListener('DOMContentLoaded', function() {
+            const divisionSelect = document.getElementById('division');
+            const districtSelect = document.getElementById('district');
+            const thanaSelect = document.getElementById('thana');
+            let currentDivisionData = [];
+
+            // 1. Load Divisions
+            fetch('https://bdapis.com/api/v1.2/divisions')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.data && Array.isArray(data.data)) {
+                        data.data.forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = item.division;
+                            option.textContent = item.division;
+                            divisionSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(err => console.error("Division Fetch Error:", err));
+
+            // 2. Load Districts
+            divisionSelect.addEventListener('change', function() {
+                const division = this.value;
+                districtSelect.innerHTML = '<option value="" disabled selected>Select District</option>';
+                districtSelect.disabled = true;
+                thanaSelect.innerHTML = '<option value="" disabled selected>Select Upazila</option>';
+                thanaSelect.disabled = true;
+
+                fetch(`https://bdapis.com/api/v1.2/division/${encodeURIComponent(division)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.data && Array.isArray(data.data)) {
+                            currentDivisionData = data.data;
+                            currentDivisionData.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.district;
+                                option.textContent = item.district;
+                                districtSelect.appendChild(option);
+                            });
+                            districtSelect.disabled = false;
+                        }
+                    });
+            });
+
+            // 3. Load Upazilas
+            districtSelect.addEventListener('change', function() {
+                const selectedDistrict = this.value;
+                thanaSelect.innerHTML = '<option value="" disabled selected>Select Upazila</option>';
+                thanaSelect.disabled = true;
+
+                const districtObj = currentDivisionData.find(d => d.district === selectedDistrict);
+                if (districtObj && districtObj.upazilla) {
+                     districtObj.upazilla.forEach(u => {
+                        const option = document.createElement('option');
+                        option.value = u;
+                        option.textContent = u;
+                        thanaSelect.appendChild(option);
+                     });
+                     thanaSelect.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

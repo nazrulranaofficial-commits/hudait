@@ -1,0 +1,7 @@
+Flask
+supabase
+python-dotenv
+requests
+Pillow
+Flask-APScheduler
+gunicorn

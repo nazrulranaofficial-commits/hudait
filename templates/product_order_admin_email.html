@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Product Order</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { width: 90%; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        .header { background-color: #5A67D8; color: white; padding: 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px; }
+        .content p { font-size: 16px; margin-bottom: 20px; }
+        .details { background-color: #f8faff; border-radius: 8px; padding: 20px; }
+        .details-item { margin-bottom: 12px; font-size: 16px; }
+        .details-item strong { color: #1a202c; min-width: 120px; display: inline-block; }
+        .section-title { color: #2d3748; margin-top: 25px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; font-size: 18px; font-weight: 600; }
+        .order-table { width: 100%; border-collapse: collapse; color: #2d3748; margin-top: 15px; }
+        .order-table th { background-color: #f8faff; font-weight: bold; padding: 12px; border: 1px solid #e2e8f0; text-align: left; }
+        .order-table td { padding: 12px; border: 1px solid #e2e8f0; }
+        .order-table .price { text-align: right; }
+        .order-table .total { background-color: #f8faff; font-weight: bold; font-size: 1.1em; }
+        .footer { text-align: center; font-size: 12px; color: #888; padding: 20px; }
+        .payment-details { border-top: 2px solid #38A169; margin-top: 20px; padding-top: 20px; }
+        .payment-details h3 { color: #38A169; margin-top: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="background-color: {{ '#38A169' if payment_details else '#D97706' }};">
+            {% if payment_details %}
+                <h1>New PAID Product Order!</h1>
+            {% else %}
+                <h1>New 'Cash on Delivery' Order</h1>
+            {% endif %}
+        </div>
+        <div class="content">
+            <p>You have a new e-commerce order. Please log in to the SaaS Admin Panel to process it.</p>
+            
+            <div class="details">
+                <h3 class="section-title" style="margin-top: 0;">Customer Details</h3>
+                <div class="details-item">
+                    <strong>Order Number:</strong> {{ order_number }}
+                </div>
+                <div class="details-item">
+                    <strong>Contact Name:</strong> {{ form_data.full_name }}
+                </div>
+                <div class="details-item">
+                    <strong>Email:</strong> {{ form_data.email }}
+                </div>
+                <div class="details-item">
+                    <strong>Phone:</strong> {{ form_data.phone }}
+                </div>
+                <div class="details-item">
+                    <strong>Address:</strong>
+                    <div style="white-space: pre-wrap; margin-top: 5px;">{{ form_data.address }}</div>
+                </div>
+                
+                <h3 class="section-title">Order Items</h3>
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th class="price">Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set subtotal_after_discount = 0 %}
+                        
+                        {% for item in order_items %}
+                            {% set item_final_total = (item.final_price_per_item | float) * (item.quantity | int) %}
+                            {% set subtotal_after_discount = subtotal_after_discount + item_final_total %}
+                            
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td class="price">{{ "%.2f"|format(item_final_total) }}</td>
+                            </tr>
+                        {% endfor %}
+                        
+                        {% set subtotal = 0 %}
+                        {% for item in order_items %}
+                           {% set subtotal = subtotal + ((item.original_price | float) * (item.quantity | int)) %}
+                        {% endfor %}
+                        {% set total_discount = subtotal - subtotal_after_discount %}
+
+                        <tr style="font-weight: 500;">
+                            <td colspan="2" class="price">Subtotal (Original):</td>
+                            <td class="price">{{ "%.2f"|format(subtotal) }} BDT</td>
+                        </tr>
+                        {% if total_discount > 0 %}
+                        <tr style="font-weight: 500; color: #E53E3E;">
+                            <td colspan="2" class="price">Discount:</td>
+                            <td class="price">-{{"%.2f"|format(total_discount) }} BDT</td>
+                        </tr>
+                        {% endif %}
+                        <tr style="font-weight: 500;">
+                            <td colspan="2" class="price">Subtotal (After Discount):</td>
+                            <td class="price">{{ "%.2f"|format(subtotal_after_discount) }} BDT</td>
+                        </tr>
+                        <tr style="font-weight: 500;">
+                            <td colspan="2" class="price">Shipping Cost:</td>
+                            <td class="price">{{ "%.2f"|format(shipping_cost) }} BDT</td>
+                        </tr>
+                        <tr class="total">
+                            <td colspan="2" class="price">Total Amount:</td>
+                            <td classD="price">{{ "%.2f"|format(total_amount) }} BDT</td>
+                        </tr>
+                        </tbody>
+                </table>
+
+                {% if payment_details %}
+                <div class="payment-details">
+                    <h3>Payment Details (Gateway)</h3>
+                    <div class="details-item">
+                        <strong>Status:</strong> <span style="color: #38A169; font-weight: bold;">PAID</span>
+                    </div>
+                    <div class="details-item">
+                        <strong>Method:</strong> {{ payment_details.method }}
+                    </div>
+                    <div class="details-item">
+                        <strong>Bank TxID:</strong> {{ payment_details.bank_trx_id }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="payment-details" style="border-color: #D97706;">
+                    <h3 style="color: #D97706;">Payment Details (Manual)</h3>
+                    <div class="details-item">
+                        <strong>Status:</strong> <span style="color: #D97706; font-weight: bold;">UNPAID</span>
+                    </div>
+                    <div class="details-item">
+                        <strong>Method:</strong> Cash on Delivery
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="footer">
+            <p>This is an automated notification from your ISP SaaS Portal.</p>
+        </div>
+    </div>
+</body>
+</html>

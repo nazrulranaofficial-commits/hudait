@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Rate Support{% endblock %}
+{% block content %}
+<div style="max-width: 500px; margin: 50px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
+    
+    <h2 style="color: #333;">How did we do?</h2>
+    <p style="color: #666;">Please rate your experience for Ticket <b>#{{ ticket.ticket_number }}</b></p>
+    
+    <form method="POST" action="{{ url_for('ticket_feedback', ticket_id=ticket.id) }}">
+        
+        <div style="margin: 30px 0; display: flex; justify-content: center; gap: 15px; flex-direction: row-reverse;">
+            <style>
+                .rating input { display: none; }
+                .rating label { cursor: pointer; width: 30px; font-size: 30px; color: #ccc; transition: color 0.2s; }
+                .rating input:checked ~ label, .rating label:hover, .rating label:hover ~ label { color: #ffca08; }
+            </style>
+            <div class="rating">
+                <input type="radio" name="rating" id="star5" value="5"><label for="star5">★</label>
+                <input type="radio" name="rating" id="star4" value="4"><label for="star4">★</label>
+                <input type="radio" name="rating" id="star3" value="3"><label for="star3">★</label>
+                <input type="radio" name="rating" id="star2" value="2"><label for="star2">★</label>
+                <input type="radio" name="rating" id="star1" value="1"><label for="star1">★</label>
+            </div>
+        </div>
+
+        <textarea name="comment" placeholder="Tell us more about your experience (optional)..." 
+                  style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px;"></textarea>
+        
+        <button type="submit" style="background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 25px; font-size: 16px; cursor: pointer;">
+            Submit Feedback
+        </button>
+    </form>
+</div>
+{% endblock %}

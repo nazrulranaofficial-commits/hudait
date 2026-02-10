@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Successful{% endblock %}
+
+{% block content %}
+<div class="page-container" style="text-align: center; padding-top: 50px;">
+    
+    <div style="background: #dcfce7; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+        <i class="fas fa-check" style="font-size: 40px; color: #166534;"></i>
+    </div>
+
+    <h1 style="color: #1e293b; margin-bottom: 10px; font-size: 24px; font-weight: 800;">Payment Collected!</h1>
+    <p style="color: #64748b; margin-bottom: 30px;">The transaction has been recorded successfully.</p>
+
+    <div style="max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px;">
+        
+        <button onclick="printReceipt('{{ url_for('employee_print_receipt', invoice_id=invoice_id) }}')" 
+           class="btn-print">
+            <i class="fas fa-print" style="margin-right: 8px;"></i> Print Thermal Receipt
+        </button>
+
+        <a href="{{ url_for('employee_print_receipt', invoice_id=invoice_id) }}" 
+           target="_blank"
+           style="font-size: 13px; color: #3b82f6; text-decoration: underline;">
+            View PDF directly
+        </a>
+
+        <a href="{{ url_for('employee_billing') }}" 
+           style="color: #64748b; text-decoration: none; font-weight: 600; padding: 10px; display: block; margin-top: 10px;">
+            <i class="fas fa-arrow-left"></i> Back to Billing List
+        </a>
+    </div>
+
+    <iframe id="receipt-frame" title="Receipt" style="position:absolute; width:0; height:0; border:0; visibility:hidden;"></iframe>
+
+</div>
+
+<script>
+    function printReceipt(url) {
+        const btn = document.querySelector('.btn-print');
+        const originalContent = btn.innerHTML;
+        
+        // 1. Show Loading State
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+
+        // 2. Load PDF into Hidden Iframe
+        const iframe = document.getElementById('receipt-frame');
+        iframe.src = url;
+
+        iframe.onload = function() {
+            // 3. Restore Button
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            btn.style.opacity = "1";
+
+            // 4. Trigger Print Dialog
+            // We use a small timeout to ensure the PDF renders internally before printing
+            setTimeout(function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    console.error("Auto-print failed, opening new window", e);
+                    window.open(url, '_blank');
+                }
+            }, 500); 
+        };
+    }
+</script>
+
+<style>
+    .btn-print {
+        background: #0f172a; 
+        color: white; 
+        padding: 16px; 
+        border-radius: 12px; 
+        text-decoration: none; 
+        font-weight: 700;
+        transition: transform 0.2s, background 0.2s;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        display: block;
+        width: 100%;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        font-family: inherit;
+    }
+    .btn-print:hover {
+        transform: translateY(-2px);
+        background: #1e293b;
+    }
+    .btn-print:active {
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}

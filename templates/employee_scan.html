@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Scanner{% endblock %}
+
+{% block content %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+    /* --- Layout & Typography --- */
+    body { background-color: #f8fafc; }
+    .page-container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+
+    /* Page Header */
+    .scan-header { margin-bottom: 25px; text-align: center; }
+    .scan-title { font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 5px; }
+    .scan-subtitle { color: #64748b; font-size: 14px; }
+
+    /* Grid Layout */
+    .scan-grid {
+        display: grid;
+        grid-template-columns: 1fr 0.8fr;
+        gap: 25px;
+        align-items: start;
+    }
+
+    /* --- Left Column: Camera Card --- */
+    .scanner-card {
+        background: black; /* Better contrast for camera */
+        border-radius: 20px;
+        padding: 0; /* Remove padding to make camera flush */
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        border: 1px solid #333;
+        position: relative;
+        overflow: hidden;
+        min-height: 350px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Overlay for status messages */
+    .scanner-overlay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(4px);
+    }
+
+    /* The actual video element container */
+    #reader {
+        width: 100%;
+        height: 100%;
+        border-radius: 20px; /* Match card radius */
+    }
+    
+    /* Success Overlay */
+    .scan-success-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(22, 163, 74, 0.9); /* Green */
+        z-index: 20;
+        display: none; /* Hidden by default */
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    /* --- Right Column: Tools --- */
+    .tools-column { display: flex; flex-direction: column; gap: 20px; }
+
+    /* Manual Entry Card */
+    .manual-card {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+    }
+    .card-label { 
+        font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .input-group { display: flex; gap: 10px; }
+    
+    .manual-input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 14px;
+        background-color: #f8fafc;
+    }
+    .manual-input:focus { outline: none; border-color: #6366f1; background: white; }
+    
+    .btn-go {
+        background: #0f172a; color: white; border: none;
+        padding: 0 20px; border-radius: 10px; cursor: pointer;
+        font-weight: 600;
+    }
+
+    /* Instructions */
+    .info-card {
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 20px;
+    }
+    .info-item { display: flex; gap: 12px; margin-bottom: 15px; }
+    .info-item:last-child { margin-bottom: 0; }
+    .info-icon {
+        width: 32px; height: 32px; background: white; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: #3b82f6; border: 1px solid #e2e8f0; flex-shrink: 0;
+    }
+    .info-text h5 { margin: 0 0 2px; font-size: 14px; color: #334155; }
+    .info-text p { margin: 0; font-size: 12px; color: #64748b; }
+
+    .back-link {
+        text-align: center; margin-top: 10px; display: block;
+        color: #64748b; text-decoration: none; font-size: 14px; font-weight: 500;
+        padding: 10px;
+    }
+
+    @media (max-width: 800px) {
+        .scan-grid { grid-template-columns: 1fr; }
+        .scanner-card { min-height: 300px; }
+    }
+</style>
+
+<div class="page-container">
+    <div class="scan-header">
+        <h1 class="scan-title">Inventory Scanner</h1>
+        <p class="scan-subtitle">Point camera at the QR code sticker.</p>
+    </div>
+
+    <div class="scan-grid">
+        
+        <div class="scanner-card">
+            <div class="scanner-overlay" id="status-badge">
+                <i class="fas fa-circle-notch fa-spin"></i> Starting Camera...
+            </div>
+
+            <div class="scan-success-overlay" id="success-overlay">
+                <i class="fas fa-check-circle fa-3x" style="margin-bottom: 15px;"></i>
+                <h3 style="margin: 0;">Code Found!</h3>
+                <p id="found-text" style="margin-top: 5px; opacity: 0.9;">Redirecting...</p>
+            </div>
+            
+            <div id="reader"></div>
+        </div>
+
+        <div class="tools-column">
+            <div class="manual-card">
+                <label class="card-label">
+                    <i class="fas fa-keyboard text-primary"></i> Manual Entry
+                </label>
+                <div class="input-group">
+                    <input type="text" id="manual-code" class="manual-input" placeholder="Type Serial or QR ID...">
+                    <button onclick="handleManual()" class="btn-go"><i class="fas fa-arrow-right"></i></button>
+                </div>
+                <small style="color:#94a3b8; font-size:12px; margin-top:8px; display:block;">
+                    Can't scan? Type the code manually.
+                </small>
+            </div>
+
+            <div class="info-card">
+                <div class="info-item">
+                    <div class="info-icon"><i class="fas fa-camera"></i></div>
+                    <div class="info-text">
+                        <h5>Back Camera</h5>
+                        <p>We automatically select the back camera. Ensure permissions are allowed.</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="fas fa-qrcode"></i></div>
+                    <div class="info-text">
+                        <h5>Lighting</h5>
+                        <p>Avoid glare. Move closer if the code is small.</p>
+                    </div>
+                </div>
+            </div>
+
+            <a href="{{ url_for('employee_dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const statusBadge = document.getElementById('status-badge');
+    const successOverlay = document.getElementById('success-overlay');
+    const foundText = document.getElementById('found-text');
+    let isRedirecting = false; // Prevent double scans
+
+    // --- 1. SCAN SUCCESS HANDLER ---
+    function onScanSuccess(decodedText, decodedResult) {
+        if (isRedirecting) return; // Ignore subsequent frames
+        isRedirecting = true;
+
+        // Visual Feedback
+        statusBadge.style.display = 'none';
+        successOverlay.style.display = 'flex';
+        foundText.innerText = decodedText;
+
+        // Stop Camera & Redirect
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                console.log("Camera stopped.");
+            }).catch(err => console.log(err));
+        }
+
+        setTimeout(() => {
+            window.location.href = "/employee/inventory/manage/" + encodeURIComponent(decodedText);
+        }, 800);
+    }
+
+    // --- 2. CAMERA SETUP ---
+    const html5QrCode = new Html5Qrcode("reader");
+    
+    // Config for better scanning
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0 
+    };
+
+    // Attempt 1: Force Back Camera ("environment")
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        config, 
+        onScanSuccess
+    ).then(() => {
+        // Success
+        statusBadge.innerHTML = '<i class="fas fa-check-circle text-green-400"></i> Camera Active';
+        setTimeout(() => { statusBadge.style.display = 'none'; }, 2000);
+    }).catch(err => {
+        console.error("Back camera failed, trying fallback...", err);
+        statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Retrying...';
+        
+        // Attempt 2: Fallback to ANY camera (User facing or default)
+        html5QrCode.start(
+            { facingMode: "user" }, 
+            config, 
+            onScanSuccess
+        ).catch(err2 => {
+            console.error("All cameras failed", err2);
+            statusBadge.innerHTML = '<i class="fas fa-times-circle"></i> Camera Error';
+            statusBadge.style.background = 'rgba(220, 38, 38, 0.9)'; // Red
+            alert("Could not start camera. Please ensure you have granted permissions or use Manual Entry.");
+        });
+    });
+
+    // --- 3. MANUAL ENTRY HANDLER ---
+    function handleManual() {
+        const code = document.getElementById('manual-code').value.trim();
+        if(code) {
+            window.location.href = "/employee/inventory/manage/" + encodeURIComponent(code);
+        } else {
+            alert("Please enter a code first.");
+        }
+    }
+    
+    document.getElementById('manual-code').addEventListener("keypress", function(event) {
+        if (event.key === "Enter") handleManual();
+    });
+</script>
+{% endblock %}

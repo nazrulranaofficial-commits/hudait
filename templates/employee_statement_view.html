@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Statement: {{ customer.full_name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    
+    {% if error_message %}
+    <div style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <strong><i class="fas fa-exclamation-triangle"></i> System Error:</strong>
+        <p style="margin: 5px 0 0 0; font-family: monospace;">{{ error_message }}</p>
+    </div>
+    {% endif %}
+
+    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;" class="no-print">
+        <a href="{{ url_for('employee_statement') }}" style="color: #64748b; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; font-size: 14px;">
+            <i class="fas fa-arrow-left"></i> Back to Search
+        </a>
+        <button onclick="window.print()" style="background: #334155; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">
+            <i class="fas fa-print"></i> Print
+        </button>
+    </div>
+
+    <div class="statement-paper">
+        
+        <div class="statement-header">
+            <div class="company-branding">
+                {% if session.user.company_logo %}
+                    <img src="{{ session.user.company_logo }}" alt="Company Logo" class="company-logo">
+                {% else %}
+                    <div class="logo-placeholder"><i class="fas fa-cube"></i></div>
+                {% endif %}
+                <div class="company-details">
+                    <h1>{{ session.user.company_name }}</h1>
+                    {% set details = session.user.company_details or {} %}
+                    <p>{{ details.get('address', 'Reliable Internet Services') }}</p>
+                    <p>{{ details.get('phone', '') }} | {{ details.get('email', '') }}</p>
+                </div>
+            </div>
+            
+            <div class="statement-meta">
+                <div class="meta-box">
+                    <h2>STATEMENT OF ACCOUNT</h2>
+                    <p><strong>Date Range:</strong> {{ start_date }} to {{ end_date }}</p>
+                    <p><strong>Generated:</strong> <span id="today"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="customer-section">
+            <div class="bill-to">
+                <small>BILL TO</small>
+                <h3>{{ customer.full_name }}</h3>
+                <p><i class="fas fa-phone-alt"></i> {{ customer.phone_number }}</p>
+                <p><i class="fas fa-envelope"></i> {{ customer.email }}</p>
+                <p><i class="fas fa-map-marker-alt"></i> {{ customer.address or 'No address provided' }}</p>
+            </div>
+            
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span class="label">Total Billed</span>
+                    <span class="value">৳{{ total_billed }}</span>
+                </div>
+                <div class="summary-card success">
+                    <span class="label">Total Paid</span>
+                    <span class="value">৳{{ total_paid }}</span>
+                </div>
+                <div class="summary-card danger">
+                    <span class="label">Due Amount</span>
+                    <span class="value">৳{{ total_due }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-section">
+            <div class="section-title">
+                <i class="fas fa-file-invoice-dollar"></i> Invoice History
+            </div>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="15%">Date</th>
+                        <th width="25%">Invoice #</th>
+                        <th width="25%">Processed By</th>
+                        <th width="15%" class="text-center">Status</th>
+                        <th width="20%" class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in invoices %}
+                    <tr>
+                        <td data-label="Date">
+                            <span class="value-text">{{ inv.created_at[:10] }}</span>
+                        </td>
+                        <td data-label="Invoice #">
+                            <span class="value-text" style="font-weight: 500; color: #334155;">{{ inv.invoice_number }}</span>
+                        </td>
+                        <td data-label="Processed By">
+                            <span class="value-text" style="color: #64748b;">
+                                {% if inv.received_by_employee_name and inv.received_by_employee_name.strip() %}
+                                    {{ inv.received_by_employee_name }}
+                                {% elif inv.payment_method %}
+                                    {{ inv.payment_method }}
+                                {% else %}
+                                    System
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td data-label="Status" class="text-center mobile-align-right">
+                            <span class="status-badge {{ 'paid' if inv.status == 'Paid' else 'unpaid' }}">
+                                {{ inv.status }}
+                            </span>
+                        </td>
+                        <td data-label="Amount" class="text-right mobile-align-right">
+                            <span class="value-text" style="font-weight: 600;">৳{{ inv.amount }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-state">No invoices found for this period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-section">
+            <div class="section-title">
+                <i class="fas fa-headset"></i> Support History
+            </div>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="15%">Date</th>
+                        <th width="40%">Issue</th>
+                        <th width="25%">Assigned To</th>
+                        <th width="20%" class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tickets %}
+                    <tr>
+                        <td data-label="Date">
+                            <span class="value-text">{{ t.created_at[:10] }}</span>
+                        </td>
+                        <td data-label="Issue">
+                            <span class="value-text">{{ t.subject }}</span>
+                        </td>
+                        <td data-label="Assigned To">
+                            <span class="value-text" style="color: #64748b;">
+                                {% if t.employees %}
+                                    {% if t.employees.full_name %}
+                                        <i class="fas fa-user-check" style="font-size: 10px; margin-right: 4px;"></i> {{ t.employees.full_name }}
+                                    {% elif t.employees.name %}
+                                        <i class="fas fa-user-check" style="font-size: 10px; margin-right: 4px;"></i> {{ t.employees.name }}
+                                    {% elif t.employees.employee_name %}
+                                        <i class="fas fa-user-check" style="font-size: 10px; margin-right: 4px;"></i> {{ t.employees.employee_name }}
+                                    {% elif t.employees.username %}
+                                        <i class="fas fa-user-check" style="font-size: 10px; margin-right: 4px;"></i> {{ t.employees.username }}
+                                    {% else %}
+                                        Unassigned
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: #94a3b8;">Unassigned</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td data-label="Status" class="text-center mobile-align-right">
+                            <span class="ticket-status">{{ t.status }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="empty-state">No tickets found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="statement-footer">
+            <p>Thank you for your business!</p>
+            <small>This is a computer-generated document. No signature is required.</small>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* Print Rules */
+    @media print {
+        body { background: white; -webkit-print-color-adjust: exact; }
+        .page-container { padding: 0; max-width: 100%; margin: 0; }
+        .no-print, .glass-header, .modern-footer { display: none !important; }
+        .statement-paper { box-shadow: none !important; padding: 20px !important; margin: 0 !important; width: 100% !important; border-radius: 0; }
+        a { text-decoration: none; color: inherit; }
+    }
+
+    /* General Layout */
+    .statement-paper {
+        background: white;
+        padding: 50px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        max-width: 900px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        color: #1e293b;
+    }
+
+    /* Header */
+    .statement-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+    }
+    .company-branding { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+    .company-logo { height: 60px; width: auto; object-fit: contain; }
+    .logo-placeholder { 
+        height: 50px; width: 50px; background: #2563eb; color: white; 
+        border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; 
+    }
+    .company-details h1 { margin: 5px 0 0 0; font-size: 24px; color: #0f172a; font-weight: 700; }
+    .company-details p { margin: 2px 0; color: #64748b; font-size: 13px; }
+
+    .statement-meta { text-align: right; }
+    .meta-box h2 { margin: 0 0 5px 0; color: #2563eb; font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+    .meta-box p { margin: 2px 0; font-size: 13px; color: #475569; }
+
+    .divider { border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0; }
+
+    /* Customer & Summary */
+    .customer-section { display: flex; justify-content: space-between; margin-bottom: 40px; align-items: flex-start; flex-wrap: wrap; gap: 30px; }
+    
+    .bill-to { flex: 1; min-width: 250px; }
+    .bill-to small { color: #94a3b8; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 5px; }
+    .bill-to h3 { margin: 0 0 8px 0; font-size: 20px; color: #0f172a; font-weight: 600; }
+    .bill-to p { margin: 3px 0; font-size: 14px; color: #475569; display: flex; align-items: center; gap: 8px; }
+    .bill-to i { color: #cbd5e1; width: 16px; }
+
+    .summary-grid { display: flex; gap: 15px; flex-wrap: wrap; }
+    .summary-card { 
+        background: #f8fafc; padding: 15px 20px; border-radius: 8px; 
+        text-align: right; min-width: 140px; border: 1px solid #e2e8f0; 
+    }
+    .summary-card.success { background: #f0fdf4; border-color: #dcfce7; }
+    .summary-card.danger { background: #fef2f2; border-color: #fee2e2; }
+    
+    .summary-card .label { display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+    .summary-card .value { display: block; font-size: 18px; font-weight: 600; color: #0f172a; }
+    .success .value { color: #15803d; }
+    .danger .value { color: #dc2626; }
+
+    /* Tables */
+    .table-section { margin-bottom: 40px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
+    .section-title i { color: #2563eb; }
+    
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { background: #f8fafc; text-align: left; padding: 12px; color: #475569; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+    .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .status-badge.paid { background: #dcfce7; color: #166534; }
+    .status-badge.unpaid { background: #fee2e2; color: #991b1b; }
+    
+    .ticket-status { background: #f1f5f9; padding: 3px 8px; border-radius: 4px; color: #475569; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .empty-state { text-align: center; color: #94a3b8; padding: 20px; font-style: italic; }
+
+    .statement-footer { margin-top: 50px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+
+    /* --- MOBILE RESPONSIVE FIXES (Robust Card View) --- */
+    @media (max-width: 768px) {
+        .page-container { padding: 10px; }
+        .statement-paper { padding: 15px; }
+
+        .statement-header { flex-direction: column; align-items: flex-start; }
+        .statement-meta { text-align: left; margin-top: 15px; width: 100%; }
+        
+        .customer-section { flex-direction: column; gap: 20px; }
+        .summary-grid { width: 100%; justify-content: space-between; }
+        .summary-card { flex: 1; min-width: 45%; }
+        
+        /* Table Transformations */
+        .data-table thead { display: none; }
+        
+        .data-table tr { 
+            display: block; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            background: #fff;
+            padding: 10px 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        
+        .data-table td { 
+            display: flex; 
+            justify-content: space-between;
+            align-items: flex-start; /* Align top for multi-line support */
+            border: none;
+            border-bottom: 1px solid #f1f5f9; 
+            padding: 10px 0;
+            text-align: right;
+        }
+        
+        .data-table td:last-child { border-bottom: none; }
+        
+        /* The Label (Left Side) */
+        .data-table td::before { 
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            text-align: left;
+            padding-right: 15px;
+            flex-shrink: 0; 
+            max-width: 40%; 
+        }
+
+        /* The Value (Right Side) - ROBUST FIX */
+        .value-text {
+            text-align: right;
+            word-break: break-word; 
+            overflow-wrap: anywhere; /* Ensures long numbers break */
+            flex: 1; 
+            display: block;
+        }
+        
+        .mobile-align-right { justify-content: space-between; }
+        .status-badge, .ticket-status { margin-left: auto; } 
+    }
+</style>
+
+<script>
+    document.getElementById('today').textContent = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', month: 'long', day: 'numeric' 
+    });
+</script>
+{% endblock %}

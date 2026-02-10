@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}View Ticket{% endblock %}
+
+{% block content %}
+<style>
+    .ticket-view-grid {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 30px;
+    }
+    .ticket-conversation, .ticket-details {
+        background-color: #fdfdfd;
+        border: 1px solid #eee;
+        border-radius: 8px;
+    }
+
+    /* Details sidebar */
+    .ticket-details h3 {
+        font-size: 18px;
+        margin: 0; padding: 20px; border-bottom: 1px solid #eee;
+    }
+    .details-body { padding: 20px; font-size: 15px; }
+    .details-body .detail-item { margin-bottom: 15px; }
+    .details-body .detail-item strong { display: block; color: #555; font-weight: 600; }
+    .details-body .detail-item span { color: #111; }
+
+    /* Conversation history */
+    .ticket-conversation h3 { font-size: 20px; margin: 0; padding: 20px; border-bottom: 1px solid #eee; }
+    .conversation-body { padding: 20px; }
+    .ticket-message { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; }
+    .ticket-message-header { background-color: #f5f5f5; padding: 10px 15px; border-bottom: 1px solid #ddd; font-weight: 600; color: #333; }
+    .ticket-message-header .author { color: #0056b3; }
+    .ticket-message-header .staff { color: #d9480f; }
+    .ticket-message-body { padding: 15px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; }
+
+    /* Status badges */
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+    .status-open { background-color: #ffc; color: #663; border: 1px solid #e6db55; }
+    .status-inprogress { background-color: #e0f3ff; color: #0056b3; border: 1px solid #a0d4ff; }
+    .status-resolved { background-color: #e0ffe8; color: #006420; border: 1px solid #a0d4b0; }
+    .status-closed { background-color: #eee; color: #555; border: 1px solid #ccc; }
+
+    /* --- RATING SECTION --- */
+    .rating-box {
+        background-color: #f0fff4; border: 1px solid #c3e6cb;
+        padding: 20px; border-radius: 8px; margin-bottom: 20px;
+        text-align: center;
+    }
+    .star-rating {
+        display: flex; flex-direction: row-reverse; justify-content: center; gap: 10px; margin: 15px 0;
+    }
+    .star-rating input { display: none; }
+    .star-rating label { font-size: 30px; color: #ccc; cursor: pointer; transition: color 0.2s; }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { color: #ffc107; }
+    
+    .rating-btn {
+        background-color: #28a745; color: white; padding: 10px 20px;
+        border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+    }
+</style>
+
+<div class="ticket-view-grid">
+    
+    <div class="ticket-conversation">
+        
+        {% if ticket.status == 'Resolved' %}
+        <div class="rating-box">
+            <h3 style="margin-top:0; border:none; color:#155724;">How was our support?</h3>
+            <p>Your issue has been marked as resolved. Please rate the technician.</p>
+            
+            <form action="{{ url_for('rate_ticket', ticket_id=ticket.id) }}" method="POST">
+                <div class="star-rating">
+                    <input type="radio" id="star5" name="rating" value="5" required/><label for="star5">★</label>
+                    <input type="radio" id="star4" name="rating" value="4"/><label for="star4">★</label>
+                    <input type="radio" id="star3" name="rating" value="3"/><label for="star3">★</label>
+                    <input type="radio" id="star2" name="rating" value="2"/><label for="star2">★</label>
+                    <input type="radio" id="star1" name="rating" value="1"/><label for="star1">★</label>
+                </div>
+                <textarea name="feedback" placeholder="Any comments? (Optional)" style="width:80%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;"></textarea><br>
+                <button type="submit" class="rating-btn">Submit Rating</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <h3>{{ ticket.subject }}</h3>
+        
+        <div class="conversation-body">
+            <div class="ticket-message">
+                <div class="ticket-message-header">
+                    <span class="author">You</span>
+                </div>
+                <div class="ticket-message-body">
+                    {{ ticket.description }}
+                </div>
+            </div>
+
+            {% for reply in replies %}
+            <div class="ticket-message">
+                <div class="ticket-message-header">
+                    <span class="staff">Support Staff</span>
+                </div>
+                <div class="ticket-message-body">
+                    {{ reply.message }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="ticket-details">
+        <h3>Ticket Details</h3>
+        <div class="details-body">
+            
+            <div class="detail-item">
+                <strong>Status:</strong>
+                <span class="status-badge status-{{ ticket.status|string|lower|replace(' ', '') }}">
+                    {{ ticket.status }}
+                </span>
+            </div>
+
+            <div class="detail-item">
+                <strong>Ticket ID:</strong>
+                <span>{{ ticket.ticket_number }}</span>
+            </div>
+
+            <div class="detail-item">
+                <strong>Assigned To:</strong>
+                {% if ticket.employees %}
+                    <span>{{ ticket.employees.full_name }}</span>
+                {% else %}
+                    <span>Not yet assigned</span>
+                {% endif %}
+            </div>
+
+            <div class="detail-item">
+                <strong>Created On:</strong>
+                <span>{{ ticket.created_at|string|split('T')|first }}</span>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}My Plan{% endblock %}
+
+{% block content %}
+<div class="plan-page-container">
+    
+    <div class="current-plan-section">
+        <h2 class="section-title">My Subscription</h2>
+        
+        {% if customer and customer.packages %}
+        <div class="hero-plan-card">
+            <div class="plan-status-badge">
+                <i class="fas fa-check-circle"></i> Active
+            </div>
+            
+            <div class="plan-info">
+                <h3 class="plan-name">{{ customer.packages.name }}</h3>
+                <div class="plan-price">
+                    <span class="currency">৳</span>
+                    <span class="amount">{{ customer.packages.price }}</span>
+                    <span class="period">/month</span>
+                </div>
+            </div>
+
+            <div class="plan-speeds">
+                <div class="speed-item">
+                    <div class="speed-icon down"><i class="fas fa-arrow-down"></i></div>
+                    <div class="speed-text">
+                        <span class="label">Download</span>
+                        <span class="value">{{ customer.packages.download_speed }} Mbps</span>
+                    </div>
+                </div>
+                <div class="speed-divider"></div>
+                <div class="speed-item">
+                    <div class="speed-icon up"><i class="fas fa-arrow-up"></i></div>
+                    <div class="speed-text">
+                        <span class="label">Upload</span>
+                        <span class="value">{{ customer.packages.upload_speed }} Mbps</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="plan-meta">
+                <p><i class="fas fa-wifi"></i> Connection Type: <strong>Fiber Optic</strong></p>
+                <p><i class="fas fa-calendar-check"></i> Billing Cycle: <strong>Monthly</strong></p>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-plan-card">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>You are not subscribed to any plan.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="available-plans-section">
+        <div class="section-header">
+            <h3>Available Packages</h3>
+            <p>Upgrade or downgrade your connection speed anytime.</p>
+        </div>
+
+        <div class="plans-grid">
+            {% for pkg in packages %}
+                {% set is_current = (customer.packages and customer.packages.id == pkg.id) %}
+                
+                <div class="pkg-card {% if is_current %}current-pkg{% endif %}">
+                    {% if is_current %}
+                    <div class="current-label">Current Plan</div>
+                    {% endif %}
+                    
+                    <div class="pkg-header">
+                        <h4>{{ pkg.name }}</h4>
+                        <div class="pkg-price">৳{{ pkg.price }}<span class="mo">/mo</span></div>
+                    </div>
+                    
+                    <div class="pkg-features">
+                        <div class="feat-row">
+                            <i class="fas fa-download"></i> 
+                            <span><strong>{{ pkg.download_speed }} Mbps</strong> Download</span>
+                        </div>
+                        <div class="feat-row">
+                            <i class="fas fa-upload"></i> 
+                            <span><strong>{{ pkg.upload_speed }} Mbps</strong> Upload</span>
+                        </div>
+                        <div class="feat-row">
+                            <i class="fas fa-clock"></i> 
+                            <span>24/7 Support</span>
+                        </div>
+                    </div>
+
+                    <div class="pkg-footer">
+                        {% if is_current %}
+                            <button class="btn-pkg disabled" disabled>Active</button>
+                        {% else %}
+                            <a href="{{ url_for('create_ticket', subject='Plan Change Request: ' ~ pkg.name) }}" class="btn-pkg">
+                                Request Change <i class="fas fa-arrow-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- CONTAINER --- */
+    .plan-page-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 30px 20px;
+        font-family: 'Inter', sans-serif;
+        color: #1e293b;
+    }
+    .section-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: #0f172a;
+    }
+
+    /* --- HERO CARD (CURRENT PLAN) --- */
+    .hero-plan-card {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        border-radius: 20px;
+        padding: 40px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 30px;
+        margin-bottom: 50px;
+    }
+    
+    /* Background Pattern Decoration */
+    .hero-plan-card::before {
+        content: '';
+        position: absolute;
+        top: -50px; right: -50px;
+        width: 200px; height: 200px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+    }
+    .hero-plan-card::after {
+        content: '';
+        position: absolute;
+        bottom: -30px; left: 40%;
+        width: 100px; height: 100px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
+    }
+
+    .plan-status-badge {
+        position: absolute;
+        top: 20px; right: 20px;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(5px);
+        padding: 6px 14px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .plan-info { flex: 1; min-width: 250px; }
+    .plan-name { font-size: 32px; font-weight: 800; margin: 0 0 10px 0; letter-spacing: -0.5px; }
+    .plan-price { display: flex; align-items: baseline; }
+    .currency { font-size: 24px; font-weight: 500; margin-right: 4px; opacity: 0.9; }
+    .amount { font-size: 48px; font-weight: 800; line-height: 1; }
+    .period { font-size: 16px; margin-left: 5px; opacity: 0.8; }
+
+    .plan-speeds {
+        background: rgba(0,0,0,0.2);
+        padding: 15px 25px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        min-width: 280px;
+    }
+    .speed-item { display: flex; align-items: center; gap: 12px; }
+    .speed-icon {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px;
+    }
+    .speed-icon.down { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .speed-icon.up { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    
+    .speed-text { display: flex; flex-direction: column; }
+    .speed-text .label { font-size: 11px; text-transform: uppercase; opacity: 0.7; letter-spacing: 0.5px; }
+    .speed-text .value { font-size: 16px; font-weight: 700; }
+    
+    .speed-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.15); }
+
+    .plan-meta {
+        width: 100%;
+        margin-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 15px;
+        display: flex;
+        gap: 20px;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    /* --- AVAILABLE PLANS GRID --- */
+    .section-header { margin-bottom: 25px; }
+    .section-header h3 { font-size: 20px; font-weight: 700; color: #334155; margin: 0 0 5px 0; }
+    .section-header p { margin: 0; color: #64748b; font-size: 14px; }
+
+    .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+    }
+
+    .pkg-card {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        transition: all 0.3s ease;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+    .pkg-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+        border-color: #cbd5e1;
+    }
+    
+    .pkg-card.current-pkg {
+        border: 2px solid #2563eb;
+        background: #f8fafc;
+    }
+    .current-label {
+        position: absolute;
+        top: -12px; left: 50%;
+        transform: translateX(-50%);
+        background: #2563eb;
+        color: white;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+    }
+
+    .pkg-header { margin-bottom: 20px; text-align: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; }
+    .pkg-header h4 { margin: 0 0 10px 0; font-size: 18px; color: #334155; font-weight: 700; }
+    .pkg-price { font-size: 28px; font-weight: 800; color: #0f172a; }
+    .pkg-price .mo { font-size: 14px; font-weight: 500; color: #94a3b8; }
+
+    .pkg-features { flex: 1; margin-bottom: 25px; display: flex; flex-direction: column; gap: 12px; }
+    .feat-row { display: flex; align-items: center; gap: 12px; color: #475569; font-size: 14px; }
+    .feat-row i { color: #2563eb; width: 16px; text-align: center; }
+
+    .btn-pkg {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid #2563eb;
+        background: transparent;
+        color: #2563eb;
+    }
+    .btn-pkg:hover { background: #2563eb; color: white; }
+    
+    .btn-pkg.disabled {
+        border-color: #cbd5e1;
+        background: #e2e8f0;
+        color: #94a3b8;
+        cursor: default;
+    }
+    .btn-pkg.disabled:hover { background: #e2e8f0; color: #94a3b8; }
+
+    /* --- MOBILE --- */
+    @media (max-width: 768px) {
+        .hero-plan-card { padding: 30px 20px; flex-direction: column; align-items: flex-start; text-align: left; }
+        .plan-speeds { width: 100%; box-sizing: border-box; justify-content: space-around; }
+        .plan-status-badge { top: 15px; right: 15px; }
+        .amount { font-size: 42px; }
+    }
+</style>
+{% endblock %}

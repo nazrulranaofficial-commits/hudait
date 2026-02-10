@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-primary: #5A67D8; /* Main Purple-Blue */
+            --color-primary-dark: #434190;
+            --color-secondary: #38B2AC; /* Teal */
+            --color-text-dark: #1a202c;
+            --color-text-light: #5a657d;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f8faff; /* Very light blue */
+            --color-shadow: rgba(90, 103, 216, 0.1);
+            --color-success: #38A169;
+            --color-error: #E53E3E;
+        }
+
+        *, *:before, *:after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--color-bg-light);
+            color: var(--color-text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 1000px; /* Wider for 2-column layout */
+            margin: auto;
+        }
+        
+        h1, h2, h3 {
+            color: var(--color-text-dark);
+            font-weight: 700;
+        }
+
+        .header-content {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo {
+            max-height: 80px; /* Bigger logo */
+            width: auto;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* --- 1. Stepper --- */
+        .stepper {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 2.5rem auto;
+            position: relative;
+        }
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+        .step-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #fff;
+            border: 2px solid var(--color-border);
+            color: var(--color-text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .step-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+            color: var(--color-text-light);
+        }
+        .step-item.completed .step-circle {
+            background-color: var(--color-success);
+            border-color: var(--color-success);
+            color: white;
+        }
+        .step-item.completed .step-name {
+            color: var(--color-text-dark);
+        }
+        .step-item.active .step-circle {
+            background-color: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+        .step-item.active .step-name {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+        .stepper::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--color-border);
+            z-index: 0;
+        }
+        .stepper-progress {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            height: 2px;
+            background-color: var(--color-success);
+            width: 50%; /* Step 1 is done, so 50% of the bar */
+            z-index: 0;
+            transition: width 0.3s ease;
+        }
+
+        /* --- 2. Checkout Layout --- */
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* 2/3 for form, 1/3 for summary */
+            gap: 2.5rem;
+            align-items: flex-start;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px var(--color-shadow);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .card h2 {
+            font-size: 1.75rem;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        /* --- 3. Form Column --- */
+        .form-column h3 {
+            font-size: 1.25rem;
+            color: var(--color-primary);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .form-column h3:first-of-type {
+            margin-top: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--color-text-dark);
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px 12px 45px; /* Padding left for icon */
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            box-sizing: border-box; 
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+            padding: 12px 15px; /* No icon for textarea */
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.2);
+        }
+        .form-group .form-icon {
+            position: absolute;
+            left: 15px;
+            top: 42px; /* Adjust this to align icon */
+            color: var(--color-text-light);
+            font-size: 1rem;
+        }
+
+        /* --- 4. Order Summary Column --- */
+        .summary-column .card {
+            padding: 2rem;
+            position: sticky; /* <-- Makes it stick! */
+            top: 2rem;
+        }
+        .summary-column h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .plan-name {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        .plan-price-details {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--color-text-dark);
+            margin-bottom: 1.5rem;
+        }
+        
+        .summary-features {
+            list-style: none;
+            padding: 1.5rem 0 0 0;
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--color-border);
+        }
+        .summary-features li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+        .summary-features i {
+            color: var(--color-success);
+            font-size: 1.1rem;
+            margin-right: 0.75rem;
+            width: 20px;
+        }
+        
+        /* --- 5. Flash Messages --- */
+        .flash-messages { 
+            list-style: none; padding: 0; margin: 0 0 1.5rem 0; 
+        }
+        .flash-messages li { 
+            padding: 15px; border-radius: 8px; margin-bottom: 12px; 
+            text-align: left; font-size: 1rem; font-weight: 600;
+            border-left-width: 5px; border-left-style: solid;
+        }
+        .flash-messages .error { 
+            background-color: #FFF5F5; color: #C53030; border-color: var(--color-error); 
+        }
+        .flash-messages .info {
+            background-color: #EBF8FF; color: #2B6CB0; border-color: #3182CE;
+        }
+        .flash-messages .success { 
+            background-color: #F0FFF4; color: #2F855A; border-color: var(--color-success); 
+        }
+        
+        /* --- 6. "Pay Now" / "Pay Later" Buttons --- */
+        .payment-choice-container {
+            margin-top: 2rem;
+            border-top: 1px solid var(--color-border);
+            padding-top: 2rem;
+        }
+        .payment-choice-text {
+            font-size: 0.9rem;
+            color: var(--color-text-light);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .submit-btn i {
+            margin-right: 10px;
+        }
+        
+        .btn-pay-now {
+            background: var(--color-success);
+            color: white;
+        }
+        .btn-pay-now:hover {
+            background: #2F855A;
+        }
+        
+        .btn-pay-later {
+            background-color: #fff;
+            color: var(--color-primary);
+            border: 2px solid var(--color-primary);
+        }
+        .btn-pay-later:hover {
+            background-color: var(--color-bg-light);
+        }
+
+        /* --- 7. Footer --- */
+        .promo-footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 2rem;
+        }
+        .promo-footer p {
+            font-size: 1rem;
+            color: var(--color-text-light);
+            margin-bottom: 0.5rem;
+        }
+        .promo-footer strong {
+            color: var(--color-text-dark);
+        }
+        
+        .links {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .links a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .links a:hover { text-decoration: underline; }
+
+        /* --- 8. Mobile Friendly --- */
+        @media (max-width: 992px) {
+            .checkout-grid {
+                grid-template-columns: 1fr; /* Stack columns */
+            }
+            .summary-column .card {
+                position: static; /* Un-stick the summary card */
+                order: -1; /* <-- MOVES SUMMARY TO THE TOP */
+                margin-bottom: 2rem;
+            }
+            .form-column {
+                order: 1;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .card { padding: 1.5rem; }
+            .logo { max-height: 60px; }
+            .stepper {
+                max-width: 100%;
+            }
+            .step-name {
+                font-size: 0.8rem;
+            }
+            .button-group {
+                grid-template-columns: 1fr; /* Stack buttons on mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <main class="main-container">
+        
+        <header class="header-content">
+            {% if developer_logo %}
+                <img src="{{ developer_logo }}" alt="{{ app_name }} Logo" class="logo">
+            {% endif %}
+            <h1 class="main-title">Complete Your Order</h1>
+        </header>
+
+        <div class="stepper">
+            <div class="stepper-progress"></div>
+            <div class="step-item completed">
+                <div class="step-circle"><i class="fas fa-check"></i></div>
+                <div class="step-name">Select Plan</div>
+            </div>
+            <div class="step-item active">
+                <div class="step-circle">2</div>
+                <div class="step-name">Your Details</div>
+            </div>
+            <div class="step-item">
+                <div class="step-circle">3</div>
+                <div class="step-name">Confirm</div>
+            </div>
+        </div>
+
+        <div class="checkout-grid">
+
+            <div class="form-column card">
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <ul class="flash-messages">
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <h3><i class="fas fa-user-circle" style="color: var(--color-primary); margin-right: 8px;"></i> Account Details</h3>
+                    <div class="form-group">
+                        <label for="full_name">Your Full Name</label>
+                        <i class="fas fa-user form-icon"></i>
+                        <input type="text" id="full_name" name="full_name" placeholder="e.g., Nazrul Huda" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <i class="fas fa-envelope form-icon"></i>
+                        <input type="email" id="email" name="email" placeholder="you@company.com" required>
+                    </div>
+
+                    <h3><i class="fas fa-building" style="color: var(--color-primary); margin-right: 8px;"></i> Company Information</h3>
+                    <div class="form-group">
+                        <label for="company_name">Company Name</label>
+                        <i class="fas fa-briefcase form-icon"></i>
+                        <input type="text" id="company_name" name="company_name" placeholder="e.g., Huda IT Solutions" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <i class="fas fa-phone form-icon"></i>
+                        <input type="text" id="phone" name="phone" placeholder="Your contact number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Full Address</label>
+                        <textarea id="address" name="address" rows="3" placeholder="Enter your company's billing address" required></textarea>
+                    </div>
+                    
+                    <div class="payment-choice-container">
+                        <p class="payment-choice-text">
+                            Choose your payment method. You can pay securely online now, 
+                            or pay later and have our team contact you for manual payment.
+                        </p>
+                        <div class="button-group">
+                            <button type="submit" name="payment_method" value="pay_later" class="submit-btn btn-pay-later">
+                                <i class="fas fa-clock"></i> Pay Later
+                            </button>
+                            <button type="submit" name="payment_method" value="pay_now" class="submit-btn btn-pay-now">
+                                <i class="fas fa-credit-card"></i> Pay Now
+                            </button>
+                        </div>
+                    </div>
+                    </form>
+            </div>
+
+            <div class="summary-column">
+                <div class="card">
+                    <h2>Your Order</h2>
+                    
+                    <div class="order-summary-content">
+                        <div class="plan-name">{{ plan.plan_name }}</div>
+                        {% if plan.discount_percent > 0 %}
+                            {% set new_price = plan.price * (1 - plan.discount_percent / 100) %}
+                            <p class="plan-price-details">
+                                <strong>{{ "%.0f"|format(new_price) }} BDT/mo</strong> 
+                                ({{ plan.discount_percent }}% Off)
+                            </p>
+                        {% else %}
+                            <p class="plan-price-details">
+                                <strong>{{ "%.0f"|format(plan.price) }} BDT/mo</strong>
+                            </p>
+                        {% endif %}
+                    </div>
+                    
+                    <ul class="summary-features">
+                        <li><i class="fas fa-users"></i> Up to <b>{{ plan.max_customers }}</b> Customers</li>
+                        <li><i class="fas fa-user-tie"></i> Up to <b>{{ plan.max_employees }}</b> Employees</li>
+                        {% set features = plan.features or {} %}
+                        {% if features.can_manage_billing %}
+                            <li><i class="fas fa-check"></i> Billing Management</li>
+                        {% endif %}
+                        {% if features.can_manage_payroll %}
+                            <li><i class="fas fa-check"></i> Payroll Management</li>
+                        {% endif %}
+                        {% if features.can_manage_support %}
+                            <li><i class="fas fa-check"></i> Support Tickets</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class_links" style="text-align: center;">
+                    <a href="{{ url_for('purchase_plans') }}"><i class="fas fa-arrow-left"></i> Back to Plans</a>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="promo-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+        
+    </main>
+
+</body>
+</html>

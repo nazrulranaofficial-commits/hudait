@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Status - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-primary: #5A67D8;
+            --color-text-dark: #1a202c;
+            --color-text-light: #5a657d;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f8faff;
+            --color-success: #38A169;
+            --color-error: #E53E3E;
+            --color-warning: #D97706;
+            --color-shadow: rgba(90, 103, 216, 0.1);
+        }
+
+        *, *:before, *:after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            background-color: var(--color-bg-light);
+            padding: 20px;
+            color: var(--color-text-light);
+        }
+
+        .track-container {
+            width: 100%;
+            max-width: 700px;
+            margin: 2rem auto;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px var(--color-shadow);
+            overflow: hidden;
+            padding: 40px;
+        }
+        
+        .header-content {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .logo {
+            max-height: 80px;
+            width: auto;
+            margin-bottom: 1.5rem;
+        }
+        
+        .main-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-text-dark);
+            margin: 0 0 1rem 0;
+        }
+        
+        .order-number {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            background: var(--color-bg-light);
+            padding: 8px 15px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+        
+        /* --- Vertical Stepper --- */
+        .status-stepper {
+            margin: 2.5rem 0;
+            padding-left: 20px;
+        }
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            position: relative;
+            padding-bottom: 2rem;
+        }
+        .step-item:last-child {
+            padding-bottom: 0;
+        }
+        .step-item::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 30px;
+            bottom: -10px;
+            width: 2px;
+            background-color: var(--color-border);
+        }
+        .step-item:last-child::before {
+            display: none;
+        }
+        
+        .step-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--color-border);
+            color: var(--color-text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+        .step-text {
+            margin-left: 1.5rem;
+        }
+        .step-text strong {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--color-text-dark);
+        }
+        .step-text p {
+            font-size: 0.95rem;
+            margin: 4px 0 0 0;
+            color: var(--color-text-light);
+        }
+
+        .step-item.completed .step-circle {
+            background-color: var(--color-success);
+            border-color: var(--color-success);
+            color: white;
+        }
+        .step-item.completed::before {
+            background-color: var(--color-success);
+        }
+        
+        .step-item.active .step-circle {
+            background-color: var(--color-warning);
+            border-color: var(--color-warning);
+            color: white;
+        }
+        .step-item.active .step-text strong {
+            color: var(--color-warning);
+        }
+        
+        .step-item.rejected .step-circle {
+            background-color: var(--color-error);
+            border-color: var(--color-error);
+            color: white;
+        }
+        .step-item.rejected .step-text strong {
+            color: var(--color-error);
+        }
+        .step-item.rejected::before {
+             display: none;
+        }
+
+        /* --- Boxes --- */
+        /* --- *** THIS IS THE FIX *** --- */
+        /* Added .pay-now-box to this selector */
+        .download-section, .contact-support, .payment-pending-box, .pay-now-box {
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        /* --- *** END OF FIX *** --- */
+        
+        .download-section {
+            background: linear-gradient(to right, #f0fff4, #e6fffa);
+            border: 1px solid var(--color-success);
+        }
+        .download-section p {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--color-text-dark);
+            margin: 0 0 1rem 0;
+        }
+        .download-btn {
+            display: inline-block;
+            background-color: var(--color-success);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+        .download-btn:hover { background-color: #2F855A; }
+        
+        .contact-support {
+            background: #FFF5F5;
+            border: 1px solid var(--color-error);
+        }
+        .contact-support p {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--color-text-dark);
+        }
+        .contact-support a { color: var(--color-error); font-weight: 600; }
+        
+        .payment-pending-box {
+            background-color: #EBF8FF; 
+            border: 1px solid #3182CE;
+        }
+        .payment-pending-box p {
+            color: #2B6CB0;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .payment-pending-box p.title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        .payment-pending-box p.email-text {
+            font-size: 0.9rem;
+        }
+        
+        .pay-now-box {
+            background: #FFFBEB; 
+            border: 1px solid var(--color-warning);
+        }
+        .pay-now-box p {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--color-text-dark);
+            margin: 0 0 1rem 0;
+        }
+        .pay-now-btn {
+            display: inline-block;
+            background-color: var(--color-warning);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+        .pay-now-btn:hover { background-color: #C05621; }
+
+
+        /* --- Footer --- */
+        .company-footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--color-text-light);
+            font-size: 14px;
+        }
+        .company-footer p { margin: 5px 0; }
+        .company-footer strong { color: var(--color-text-dark); }
+        
+        .links {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .links a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+        /* --- Flash Messages --- */
+        .flash-messages { 
+            list-style: none; padding: 0; margin: 0 0 20px 0; 
+        }
+        .flash-messages li { 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 12px; 
+            text-align: left; 
+            font-size: 15px; 
+            font-weight: 600;
+            border-left-width: 5px;
+            border-left-style: solid;
+        }
+        .flash-messages .error { 
+            background-color: #FFF5F5; color: #C53030; border-color: var(--color-error); 
+        }
+        
+        /* --- Mobile --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .track-container {
+                margin: 0;
+                padding: 0;
+            }
+            .card {
+                padding: 30px 20px;
+            }
+            .step-text { margin-left: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="track-container">
+        <div class="card">
+            <div class="header-content">
+                {% if developer_logo %}
+                    <img src="{{ developer_logo }}" alt="Logo" class="logo">
+                {% endif %}
+                <h1 class="main-title">Order Status</h1>
+                {% if order %}
+                    <span class="order-number">{{ order.order_number }}</span>
+                {% endif %}
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            {% if order %}
+            <div class="status-stepper">
+                <div class="step-item completed">
+                    <div class="step-circle"><i class="fas fa-check"></i></div>
+                    <div class="step-text">
+                        <strong>Order Placed</strong>
+                        <p>We've received your order and it's in the queue.</p>
+                    </div>
+                </div>
+
+                {% if order.payment_method %}
+                    <div class="step-item completed">
+                        <div class="step-circle"><i class="fas fa-check"></i></div>
+                        <div class="step-text">
+                            <strong>Payment Received</strong>
+                            <p>
+                                <b>Amount Paid:</b> {{ (order.plan_snapshot.final_price or order.plan_snapshot.price) | float | round(2) }} BDT<br>
+                                <b>Method:</b> {{ order.payment_method or 'N/A' }}<br>
+                                <b>Transaction ID:</b> {{ order.transaction_id or 'N/A' }}
+                            </p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if order.status == 'Pending Payment' %}
+                <div class="step-item active">
+                    <div class="step-circle"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="step-text">
+                        <strong>Pending Payment</strong>
+                        <p>Your order is awaiting payment. Please click "Pay Now" below.</p>
+                    </div>
+                </div>
+                {% elif order.status == 'Pending Review' %}
+                <div class="step-item active">
+                    <div class="step-circle"><i class="fas fa-cogs"></i></div>
+                    <div class="step-text">
+                        <strong>Pending Review</strong>
+                        <p>Your payment is confirmed. Our team is now reviewing your order.</p>
+                    </div>
+                </div>
+                {% elif order.status == 'Approved' %}
+                <div class="step-item completed">
+                    <div class="step-circle"><i class="fas fa-check-double"></i></div>
+                    <div class="step-text">
+                        <strong>Order Approved</strong>
+                        <p>Congratulations! Your account is active. See below to download the app.</p>
+                    </div>
+                </div>
+                {% elif order.status == 'Rejected' %}
+                <div class="step-item rejected">
+                    <div class="step-circle"><i class="fas fa-times"></i></div>
+                    <div class="step-text">
+                        <strong>Order Rejected</strong>
+                        <p>Unfortunately, we could not approve your order. Please check your email for details.</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--color-border); margin: 2rem 0;">
+
+            {% if order.status == 'Approved' %}
+                <div class="download-section">
+                    <p>Your Account is Ready!</p>
+                    {% if app_download_url %}
+                        <a href="{{ app_download_url }}" class="download-btn">
+                            <i class="fas fa-download"></i> Download the Admin App
+                        </a>
+                        <p style="font-size: 0.9rem; font-weight: 400; margin-top: 1rem;">
+                            Use the credentials sent to your email to log in.
+                        </p>
+                    {% else %}
+                        <p style="font-size: 1rem; font-weight: 500;">
+                            Your account is active. Please contact support to receive the application download link.
+                        </p>
+                    {% endif %}
+                </div>
+            
+            {% elif order.status == 'Rejected' %}
+                <div class="contact-support">
+                    <p>We apologize for the inconvenience. If you believe this is an error, please
+                        <a href="mailto:{{ contact_email or '#' }}">contact our support team</a>.
+                    </p>
+                </div>
+            
+            {% elif order.status == 'Pending Review' %}
+                <div class="payment-pending-box">
+                    <p class="title">
+                        <i class="fas fa-check-circle" style="color: var(--color-primary);"></i> Your payment is confirmed.
+                    </p>
+                    <p class="email-text">
+                        Our team is now reviewing your order. You will be notified by email at
+                        <strong>{{ order.customer_details.email }}</strong> once approved.
+                    </p>
+                </div>
+            
+            {% elif order.status == 'Pending Payment' %}
+                <div class="pay-now-box">
+                    <p>Your Order is Pending Payment</p>
+                    <a href="{{ url_for('pay_for_order', order_number=order.order_number) }}" class="pay-now-btn">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </a>
+                    <p style="font-size: 0.9rem; font-weight: 400; margin-top: 1rem; color: #5a657d;">
+                        You can also contact us to pay manually.
+                    </p>
+                </div>
+                
+            {% endif %}
+            
+            {% endif %}
+            
+            <div class="links" style="margin-top: 2rem; border-top: 1px solid var(--color-border); padding-top: 2rem;">
+                <a href="{{ url_for('track_order') }}"><i class="fas fa-search"></i> Check Another Order</a>
+            </div>
+        </div>
+        
+        <footer class="company-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+    </div>
+
+</body>
+</html>

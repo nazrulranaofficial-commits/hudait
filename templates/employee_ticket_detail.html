@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket {{ ticket.ticket_number }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+    .ticket-grid {
+        display: grid;
+        grid-template-columns: 7fr 3fr; /* Slightly wider chat area */
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+        align-items: start; /* Align top */
+    }
+    
+    /* --- LEFT COLUMN: CHAT SECTION --- */
+    .chat-section {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        height: 60vh; /* <--- REDUCED HEIGHT (Was 80vh) */
+        min-height: 500px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .chat-header {
+        padding: 12px 20px;
+        border-bottom: 1px solid #eee;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 8px 8px 0 0;
+    }
+    .chat-body {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto; /* Scrollable */
+        background: #fdfdfd;
+    }
+    
+    /* --- COMPACT MESSAGE BUBBLES --- */
+    .message-bubble {
+        margin-bottom: 8px; /* Reduced from 15px */
+        padding: 8px 12px;  /* Reduced padding */
+        border-radius: 6px;
+        max-width: 85%;
+        border: 1px solid #eee;
+        font-size: 14px;
+        position: relative;
+    }
+    .msg-customer { 
+        background: #e3f2fd; 
+        border-color: #bbdefb; 
+        margin-right: auto; 
+    }
+    .msg-staff { 
+        background: #fff3e0; 
+        border-color: #ffe0b2; 
+        margin-left: auto; 
+    }
+    .msg-meta { 
+        font-size: 10px; 
+        color: #777; 
+        margin-top: 4px; 
+        display: block; 
+        text-align: right;
+    }
+
+    /* --- RIGHT COLUMN: SIDEBAR --- */
+    .sidebar { display: flex; flex-direction: column; gap: 15px; }
+    .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    
+    /* SLA / Info Box */
+    .sla-box { text-align: center; padding: 10px; border-radius: 6px; color: white; font-weight: bold; }
+    .sla-safe { background: #28a745; }
+    .sla-warning { background: #ffc107; color: #333; }
+    .sla-danger { background: #dc3545; }
+    
+    #sla-timer { font-size: 20px; font-family: monospace; display: block; margin-top: 3px; }
+    .sla-subtext { font-size: 11px; font-weight: normal; margin-top: 3px; }
+
+    /* Map */
+    #map { height: 200px; width: 100%; border-radius: 6px; border: 1px solid #ccc; margin-top: 5px; }
+
+    /* Status Badges */
+    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+    .status-open { background: #ffeeba; color: #856404; }
+    .status-inprogress { background: #b8daff; color: #004085; }
+    .status-resolved { background: #c3e6cb; color: #155724; }
+    .status-closed { background: #d6d8d9; color: #1b1e21; }
+    
+    /* Disabled Form Styles */
+    select:disabled { background-color: #e9ecef; cursor: not-allowed; }
+    button:disabled { background-color: #6c757d !important; cursor: not-allowed; opacity: 0.7; }
+
+    /* Custom Scrollbar */
+    .chat-body::-webkit-scrollbar { width: 6px; }
+    .chat-body::-webkit-scrollbar-track { background: #f1f1f1; }
+    .chat-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .chat-body::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+    @media (max-width: 900px) { .ticket-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="ticket-grid">
+    
+    <div class="chat-section">
+        <div class="chat-header">
+            <div>
+                <h3 style="margin:0; font-size: 18px;">{{ ticket.subject }}</h3>
+                <span style="color:#666; font-size:13px;">Ticket #{{ ticket.ticket_number }} • Priority: <b>{{ ticket.priority }}</b></span>
+            </div>
+            <span class="status-badge status-{{ ticket.status|lower|replace(' ', '') }}">{{ ticket.status }}</span>
+        </div>
+        
+        <div class="chat-body">
+            <div class="message-bubble msg-customer">
+                <strong style="font-size:13px;">{{ ticket.customers.full_name }}</strong> <span style="font-size:11px; color:#666;">(Customer)</span>
+                <div style="margin-top: 4px;">{{ ticket.description }}</div>
+                <span class="msg-meta">{{ ticket.created_at | string | truncate(16, True, '') }}</span>
+            </div>
+
+            {% for reply in replies %}
+            <div class="message-bubble msg-staff">
+                <strong style="font-size:13px;">Support Reply</strong>
+                <div style="margin-top: 4px;">{{ reply.message }}</div>
+                <span class="msg-meta">{{ reply.created_at | string | truncate(16, True, '') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="sidebar">
+        
+        <div class="card">
+            <strong style="font-size:14px;">Time Tracking</strong>
+            <div style="margin-top: 8px;">
+                <div id="sla-container" class="sla-box">
+                    <span id="timer-label" style="font-size: 11px; opacity: 0.8;">SLA DEADLINE</span>
+                    <span id="sla-timer">Loading...</span>
+                    <div id="sla-subtext" class="sla-subtext"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <strong style="font-size:14px;">Update Status</strong>
+            
+            {% set is_locked = ticket.status in ['Resolved', 'Closed'] %}
+            
+            {% if is_locked %}
+                <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; color: #666;">
+                    🔒 Ticket is <b>{{ ticket.status }}</b>. <br>Updates disabled.
+                </div>
+            {% else %}
+                <form method="POST" action="{{ url_for('employee_view_ticket', ticket_id=ticket.id) }}">
+                    <select name="status" style="width:100%; padding:6px; margin:8px 0; border:1px solid #ccc; border-radius:4px; font-size: 13px;">
+                        <option value="Open" {% if ticket.status == 'Open' %}selected{% endif %}>Open</option>
+                        <option value="In Progress" {% if ticket.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                        <option value="Resolved" {% if ticket.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                    </select>
+                    <button type="submit" style="width:100%; padding:8px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; font-size: 13px;">
+                        Update Ticket
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <strong style="font-size:14px;">Customer Location</strong>
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px; line-height: 1.3;">
+                {{ ticket.customers.address }}
+            </div>
+            <div id="map"></div>
+            <a href="https://www.google.com/maps/dir/?api=1&destination={{ ticket.customers.latitude }},{{ ticket.customers.longitude }}" 
+               target="_blank" 
+               style="display:block; text-align:center; margin-top:8px; font-size:12px; color: #007bff; text-decoration: none;">
+               Open in Google Maps
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // --- 1. MAP LOGIC ---
+    var lat = {{ ticket.customers.latitude or 23.8103 }};
+    var lng = {{ ticket.customers.longitude or 90.4125 }};
+    
+    var map = L.map('map').setView([lat, lng], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    L.marker([lat, lng]).addTo(map)
+        .bindPopup('<b>{{ ticket.customers.full_name }}</b><br>{{ ticket.customers.phone_number }}')
+        .openPopup();
+
+
+    // --- 2. TIMER / SLA LOGIC ---
+    var status = "{{ ticket.status }}";
+    var assignedAtStr = "{{ ticket.assigned_at }}";
+    var resolvedAtStr = "{{ ticket.resolved_at }}";
+    var createdStr = "{{ ticket.created_at }}";
+    var dueStr = "{{ ticket.due_at }}"; 
+    
+    var slaContainer = document.getElementById('sla-container');
+    var timerDisplay = document.getElementById('sla-timer');
+    var labelDisplay = document.getElementById('timer-label');
+    var subtextDisplay = document.getElementById('sla-subtext');
+    
+    function parseDate(str) {
+        if (!str || str === 'None') return null;
+        if (!str.endsWith('Z') && !str.includes('+')) { return new Date(str + 'Z'); }
+        return new Date(str);
+    }
+
+    if (status === 'Resolved' || status === 'Closed') {
+        labelDisplay.innerText = "STATUS";
+        timerDisplay.innerText = "RESOLVED";
+        slaContainer.className = "sla-box sla-safe"; 
+        slaContainer.style.backgroundColor = "#28a745";
+
+        if (resolvedAtStr && resolvedAtStr !== 'None') {
+            var start = parseDate(assignedAtStr) || parseDate(createdStr);
+            var end = parseDate(resolvedAtStr);
+            var diffHrs = ((end - start) / (1000 * 60 * 60)).toFixed(1);
+            subtextDisplay.innerText = "Completed in " + diffHrs + " hours";
+        } else {
+            subtextDisplay.innerText = "Time not recorded";
+        }
+
+    } else if (dueStr && dueStr !== 'None') {
+        var dueDate = parseDate(dueStr);
+        subtextDisplay.innerText = "Due: " + dueDate.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+
+        function updateTimer() {
+            var diff = dueDate - new Date();
+            if (diff <= 0) {
+                timerDisplay.innerText = "OVERDUE";
+                slaContainer.className = "sla-box sla-danger";
+            } else {
+                var hours = Math.floor(diff / (1000 * 60 * 60));
+                var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                timerDisplay.innerText = hours + "h " + minutes + "m " + seconds + "s";
+                if (hours < 2) slaContainer.className = "sla-box sla-warning";
+                else slaContainer.className = "sla-box sla-safe";
+            }
+        }
+        setInterval(updateTimer, 1000);
+        updateTimer(); 
+    } else {
+        timerDisplay.innerText = "--";
+        labelDisplay.innerText = "NO SLA";
+        slaContainer.style.background = "#6c757d";
+    }
+</script>
+{% endblock %}

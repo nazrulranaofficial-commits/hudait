@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Collect Payment{% endblock %}
+
+{% block content %}
+<style>
+    /* --- Page Layout --- */
+    body { background-color: #f8fafc; }
+    .page-container { max-width: 550px; margin: 0 auto; padding: 40px 20px; }
+
+    /* --- The Payment Card --- */
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    /* --- Header & Title --- */
+    .form-header { text-align: center; margin-bottom: 25px; }
+    .form-title { font-size: 22px; font-weight: 700; color: #1e293b; margin: 0; }
+    .form-sub { font-size: 14px; color: #64748b; margin-top: 5px; }
+
+    /* --- Invoice Summary Box --- */
+    .summary-box {
+        background: #f1f5f9;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        text-align: center;
+        border: 1px dashed #cbd5e1;
+    }
+    .amount-label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .amount-value { font-size: 36px; font-weight: 800; color: #0f172a; margin: 5px 0; line-height: 1; }
+    .currency { font-size: 16px; color: #64748b; font-weight: 600; margin-left: 2px; }
+    .customer-info { font-size: 14px; color: #334155; font-weight: 500; margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+    /* --- Form Elements --- */
+    .form-group { margin-bottom: 20px; text-align: left; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 8px; }
+    
+    .form-control, .form-select {
+        width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 10px;
+        font-size: 15px; color: #1e293b; background: #fff; transition: all 0.2s;
+        box-sizing: border-box; appearance: none;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        background-size: 12px 8px;
+    }
+
+    /* --- Submit Button --- */
+    .btn-submit {
+        background: #0f172a; color: white; width: 100%; padding: 14px;
+        border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+        cursor: pointer; transition: all 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+    }
+    .btn-submit:hover { background: #1e293b; transform: translateY(-1px); }
+    .btn-submit:active { transform: translateY(0); }
+
+    /* --- Back Link --- */
+    .back-link {
+        display: block; text-align: center; margin-top: 25px;
+        color: #64748b; text-decoration: none; font-size: 14px; font-weight: 600;
+        transition: color 0.2s;
+    }
+    .back-link:hover { color: #334155; text-decoration: underline; }
+    
+    /* Animation for dynamic fields */
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<div class="page-container">
+    <div class="form-card">
+        
+        <div class="form-header">
+            <h1 class="form-title">Collect Payment</h1>
+            <p class="form-sub">Recording payment for Invoice #{{ invoice.invoice_number }}</p>
+        </div>
+
+        <div class="summary-box">
+            <div class="amount-label">Total Due</div>
+            <div class="amount-value">{{ "%.2f"|format(invoice.amount) }}<span class="currency">BDT</span></div>
+            <div class="customer-info">
+                <i class="far fa-user-circle"></i> {{ invoice.customers.full_name }}
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('employee_collect_payment', invoice_id=invoice.id) }}">
+            
+            <div class="form-group">
+                <label class="form-label">Payment Method</label>
+                <select name="payment_method" id="payment_method" class="form-select" onchange="toggleFields()" required>
+                    <option value="" disabled selected>Select a method...</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Mobile Banking">Mobile Banking (bKash/Nagad)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Card">Credit/Debit Card</option>
+                    <option value="Check">Check</option>
+                </select>
+            </div>
+
+            <div id="details_group" class="form-group fade-in" style="display: none;">
+                <label id="details_label" class="form-label">Provider Name</label>
+                <input type="text" name="method_details" id="method_details" class="form-control" placeholder="">
+            </div>
+
+            <div id="trx_group" class="form-group fade-in" style="display: none;">
+                <label class="form-label">Transaction ID / Reference</label>
+                <input type="text" name="transaction_id" id="transaction_id" class="form-control" placeholder="e.g. TRX12345678">
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-check-circle"></i> Confirm Payment
+            </button>
+        </form>
+    </div>
+
+    <a href="{{ url_for('employee_billing') }}" class="back-link">
+        <i class="fas fa-arrow-left me-1"></i> Cancel & Return to Billing
+    </a>
+</div>
+
+<script>
+    function toggleFields() {
+        const method = document.getElementById('payment_method').value;
+        const detailsGroup = document.getElementById('details_group');
+        const detailsLabel = document.getElementById('details_label');
+        const detailsInput = document.getElementById('method_details');
+        const trxGroup = document.getElementById('trx_group');
+        const trxInput = document.getElementById('transaction_id');
+
+        // Default: Hide extra fields
+        detailsGroup.style.display = 'none';
+        trxGroup.style.display = 'none';
+        trxInput.required = false;
+
+        if (method === 'Cash') {
+            // Cash needs no extra fields
+        } 
+        else {
+            // All non-cash methods require a Transaction ID
+            trxGroup.style.display = 'block';
+            trxInput.required = true;
+
+            // Specific labels for specific methods
+            if (method === 'Mobile Banking') {
+                detailsGroup.style.display = 'block';
+                detailsLabel.innerText = 'Provider Name';
+                detailsInput.placeholder = 'e.g. bKash, Nagad, Rocket';
+            } 
+            else if (method === 'Bank Transfer') {
+                detailsGroup.style.display = 'block';
+                detailsLabel.innerText = 'Bank Name';
+                detailsInput.placeholder = 'e.g. City Bank, BRAC Bank';
+            }
+            else if (method === 'Card') {
+                detailsGroup.style.display = 'block';
+                detailsLabel.innerText = 'Card Type';
+                detailsInput.placeholder = 'e.g. Visa, MasterCard';
+            }
+            else if (method === 'Check') {
+                detailsGroup.style.display = 'block';
+                detailsLabel.innerText = 'Bank Name';
+                trxInput.placeholder = 'Check Number';
+            }
+        }
+    }
+</script>
+{% endblock %}

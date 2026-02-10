@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-primary: #5A67D8;
+            --color-primary-dark: #434190;
+            --color-success: #38A169;
+            --color-text-dark: #1a202c;
+            --color-text-light: #5a657d;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f8faff;
+            --color-shadow: rgba(90, 103, 216, 0.1);
+            --color-popular: #D97706; 
+            --color-sale: #f85606; 
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f5f5f5;
+            color: var(--color-text-light);
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            box-sizing: border-box; 
+        }
+        
+        /* --- 1. HEADER (Fixed Overlap Issues) --- */
+        .header {
+            background-color: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            padding: 0.8rem 0;
+        }
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative; 
+            padding: 0 1rem;
+            min-height: 40px; 
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            z-index: 10; /* Keep buttons clickable */
+        }
+        
+        .logo {
+            max-height: 40px; 
+            width: auto;
+        }
+        .logo-link-desktop { display: block; }
+        .logo-link-mobile { display: none; }
+        
+        .mobile-menu-toggle {
+            display: none;
+            font-size: 1.4rem;
+            color: var(--color-text-dark);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .nav-links-desktop {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .nav-links-desktop a {
+            color: var(--color-text-dark);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .nav-links-desktop a:hover {
+            color: var(--color-primary);
+        }
+        
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px; 
+            transition: background-color 0.2s ease;
+            font-size: 0.9rem;
+            height: 40px; 
+            box-sizing: border-box;
+            z-index: 10; /* Keep clickable */
+        }
+        .btn-primary:hover {
+            background-color: var(--color-primary-dark);
+        }
+        
+        .cart-badge {
+            background-color: white;
+            color: var(--color-primary);
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--color-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid var(--color-primary);
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+        .btn-secondary:hover {
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        /* --- 2. MOBILE MENU (Fixed Z-Index & Layout) --- */
+        .mobile-menu-overlay { 
+            display: none; position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.5); z-index: 1999; 
+        }
+        .mobile-menu-overlay.mobile-active { display: block; }
+        
+        .mobile-sidebar-nav { 
+            display: none; position: fixed; left: -300px; top: 0; bottom: 0; width: 280px; 
+            z-index: 2000; /* Higher than header */
+            background-color: #ffffff; overflow-y: auto; transition: left 0.3s ease;
+            padding: 1.5rem; flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        .mobile-sidebar-nav.mobile-active { display: flex; left: 0; }
+        
+        .mobile-menu-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.5rem; border-bottom: 1px solid #f0f0f0; padding-bottom: 1rem;
+        }
+        .mobile-menu-title { font-size: 1.2rem; font-weight: 800; color: var(--color-text-dark); }
+        .close-menu { font-size: 1.8rem; cursor: pointer; color: var(--color-text-light); line-height: 0.8; }
+        
+        .mobile-nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 0; font-size: 1rem; font-weight: 600; 
+            color: var(--color-text-dark); text-decoration: none;
+            border-bottom: 1px solid #f8faff; transition: color 0.2s;
+        }
+        .mobile-nav-item i { width: 24px; text-align: center; color: var(--color-text-light); }
+        .mobile-nav-item:hover { color: var(--color-primary); }
+        
+        .mobile-cat-title {
+            margin-top: 2rem; margin-bottom: 1rem;
+            font-size: 0.85rem; font-weight: 700; color: var(--color-text-light);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .mobile-cat-list { display: flex; flex-direction: column; gap: 6px; }
+        .mobile-cat-item {
+            display: block; padding: 10px 14px;
+            font-size: 0.95rem; color: var(--color-text-dark);
+            text-decoration: none; border-radius: 8px;
+            background: #f8fafc; transition: all 0.2s; font-weight: 500;
+        }
+        .mobile-cat-item:hover { background: #eff6ff; color: var(--color-primary); }
+
+        /* --- 3. LAYOUT --- */
+        .shop-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 1.5rem;
+            padding-bottom: 3rem;
+            margin-top: 1.5rem;
+        }
+        
+        /* Desktop Sidebar */
+        .shop-sidebar {
+            background-color: #ffffff;
+            padding: 1.25rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            align-self: flex-start;
+            position: sticky; top: 90px;
+        }
+        .shop-sidebar h3 {
+            font-size: 1rem; margin: 0 0 1rem 0;
+            color: var(--color-text-dark);
+            text-transform: uppercase; font-weight: 700;
+            padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);
+        }
+        .category-list { list-style: none; padding: 0; margin: 0; }
+        .category-list li a {
+            display: flex; justify-content: space-between;
+            padding: 8px 10px;
+            text-decoration: none;
+            color: var(--color-text-light);
+            font-size: 0.9rem; font-weight: 500;
+            border-radius: 4px; transition: all 0.2s;
+        }
+        .category-list li a:hover { background-color: #f0f0f0; color: var(--color-text-dark); }
+        .category-list li a.active { background-color: #eff6ff; color: var(--color-primary); font-weight: 600; }
+        
+        .shop-content { min-width: 0; }
+
+        /* --- 4. CONTROLS --- */
+        .filter-bar {
+            width: 100%; margin-bottom: 0; 
+            display: grid; grid-template-columns: 1fr auto; gap: 1rem;
+            background-color: #fff; padding: 0.75rem;
+            border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-sizing: border-box; 
+        }
+        .search-container { display: flex; flex-grow: 1; }
+        .search-container input {
+            flex-grow: 1; padding: 10px 15px; font-size: 0.95rem;
+            border: 1px solid var(--color-border); border-radius: 6px 0 0 6px;
+            outline: none; background-color: #f9f9f9;
+        }
+        .search-container input:focus { background-color: white; border-color: var(--color-primary); }
+        .search-container button {
+            padding: 0 20px; border: none;
+            background-color: var(--color-primary); color: white;
+            font-size: 1rem; border-radius: 0 6px 6px 0; cursor: pointer;
+        }
+        .filter-group { display: flex; align-items: center; }
+        .filter-group select {
+            padding: 10px; font-size: 0.9rem;
+            border: 1px solid var(--color-border); border-radius: 6px;
+            background-color: #f9f9f9; cursor: pointer;
+            max-width: 100%;
+        }
+
+        /* --- 5. FLASH SALE BANNER --- */
+        .flash-sale-container {
+            background-color: white; border-radius: 8px; margin-bottom: 1.5rem;
+            overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-top: 1rem; 
+        }
+        .flash-header {
+            padding: 10px 15px; border-bottom: 1px solid #f0f0f0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .flash-title { color: var(--color-sale); font-weight: 700; font-size: 1rem; text-transform: uppercase; }
+        .shop-more-btn {
+            font-size: 0.8rem; font-weight: 600; color: var(--color-primary);
+            text-decoration: none; border: 1px solid var(--color-primary);
+            padding: 4px 10px; border-radius: 20px;
+        }
+        .flash-scroll-wrapper {
+            display: flex; overflow-x: auto; gap: 10px; padding: 15px;
+            scroll-behavior: smooth; scrollbar-width: none;
+        }
+        .flash-scroll-wrapper::-webkit-scrollbar { display: none; }
+
+        .flash-card {
+            flex: 0 0 180px; background: white; border: 1px solid #eee;
+            border-radius: 8px; padding: 10px; transition: transform 0.2s;
+            text-decoration: none; color: inherit; display: flex; flex-direction: column;
+        }
+        .flash-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .flash-img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 8px; }
+        .flash-details h4 {
+            font-size: 0.85rem; margin: 0 0 4px 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--color-text-dark);
+        }
+        .flash-price { color: var(--color-sale); font-weight: 700; font-size: 1rem; }
+        .flash-old-price { font-size: 0.75rem; text-decoration: line-through; color: #9aa5b1; margin-left: 5px; }
+        .flash-discount-tag {
+            background-color: #ffe4e4; color: var(--color-sale);
+            font-size: 0.7rem; font-weight: 700; padding: 2px 6px;
+            border-radius: 4px; align-self: flex-start; margin-bottom: 5px;
+        }
+
+        /* --- 6. PRODUCT GRID --- */
+        .product-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .product-card {
+            background-color: #ffffff; border-radius: 8px; overflow: hidden;
+            display: flex; flex-direction: column; transition: all 0.2s ease;
+            position: relative; border: 1px solid transparent;
+        }
+        .product-card:hover {
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #f0f0f0;
+        }
+        
+        .discount-badge-pill {
+            position: absolute; top: 8px; left: 8px;
+            background-color: var(--color-sale); color: white;
+            font-size: 0.7rem; font-weight: 700; padding: 3px 8px;
+            border-radius: 12px; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .product-image-container { 
+            width: 100%; height: 180px; overflow: hidden; display: block;
+            background-color: #fff; padding: 10px; box-sizing: border-box;
+        }
+        .product-image {
+            width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s ease;
+        }
+        .product-card:hover .product-image { transform: scale(1.05); }
+        
+        .product-content {
+            padding: 10px 12px 15px; display: flex; flex-direction: column; flex-grow: 1;
+        }
+        .product-content h4 {
+            font-size: 0.95rem; font-weight: 600; color: var(--color-text-dark);
+            margin: 0 0 6px 0; line-height: 1.4; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.8em;
+        }
+        .product-content h4 a { text-decoration: none; color: inherit; transition: color 0.2s; }
+        .product-content h4 a:hover { color: var(--color-primary); }
+        
+        .star-rating {
+            font-size: 0.75rem; color: #9aa5b1; margin-bottom: 6px; display: flex; align-items: center;
+        }
+        .star-rating .stars { color: var(--color-popular); margin-right: 4px; }
+        
+        .product-footer { margin-top: auto; }
+        .price-wrapper { margin-bottom: 8px; }
+        .product-price-new { font-size: 1.1rem; font-weight: 700; color: var(--color-sale); }
+        .product-price-old { font-size: 0.8rem; color: #9aa5b1; text-decoration: line-through; margin-left: 6px; }
+        .product-price-regular { font-size: 1.1rem; font-weight: 700; color: var(--color-primary); }
+        
+        .product-buttons { display: flex; gap: 8px; width: 100%; }
+        .product-btn {
+            flex: 1; text-align: center; padding: 8px; border-radius: 4px;
+            text-decoration: none; font-weight: 600; font-size: 0.8rem;
+            border: none; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-buy-now { background: var(--color-primary); color: white; }
+        .btn-buy-now:hover { opacity: 0.9; }
+        .btn-add-cart { background: #eff0f5; color: var(--color-text-dark); }
+        .btn-add-cart:hover { background: #e2e5ea; }
+        
+        .no-results {
+            text-align: center; padding: 3rem; grid-column: 1 / -1;
+            background-color: #fff; border-radius: 8px;
+        }
+
+        .company-footer {
+            text-align: center; margin-top: 30px; padding: 2rem 1rem;
+            background-color: #fff; border-top: 1px solid var(--color-border);
+            color: var(--color-text-light); font-size: 0.9rem;
+        }
+        .company-footer strong { color: var(--color-text-dark); }
+
+        /* --- MOBILE RESPONSIVE TWEAKS --- */
+        @media (max-width: 992px) {
+            .shop-layout { grid-template-columns: 1fr; }
+            .shop-sidebar { display: none; }
+            .mobile-menu-toggle { display: flex; }
+            .nav-links-desktop { display: none; }
+            .logo-link-desktop { display: none; }
+            
+            /* CENTER LOGO FIX */
+            .logo-link-mobile { 
+                display: flex; 
+                position: absolute; 
+                left: 50%; 
+                transform: translateX(-50%); 
+                z-index: 1;
+                max-width: calc(100% - 120px); /* PREVENT OVERLAP with buttons */
+                justify-content: center;
+            }
+            .logo-link-mobile img { max-height: 40px; width: auto; }
+            
+            .btn-primary { margin-left: auto; padding: 0 12px; }
+            .btn-primary .cart-text { display: none; }
+            .flash-card { flex: 0 0 150px; } 
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 0; }
+            .header-inner { padding: 0 1rem; }
+            
+            .filter-bar { flex-direction: column; gap: 0.8rem; margin: 0 0.5rem 1rem; width: auto; }
+            .search-container, .filter-group { width: 100%; }
+            .filter-group select { width: 100%; }
+            
+            .product-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0 0.5rem; }
+            .product-image-container { height: 140px; }
+            .product-content { padding: 8px; }
+            .product-btn { padding: 6px; font-size: 0.75rem; }
+            
+            .flash-sale-container { margin: 0 0.5rem 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMenu()"></div>
+    <aside class="mobile-sidebar-nav" id="mobile-sidebar-nav">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <div class="close-menu" onclick="toggleMenu()">&times;</div>
+        </div>
+        
+        <div class="mobile-links-section">
+            <a href="{{ url_for('purchase_plans') }}" class="mobile-nav-item">
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="{{ url_for('shop') }}" class="mobile-nav-item" style="color: var(--color-primary);">
+                <i class="fas fa-shopping-bag"></i> Shop
+            </a>
+            <a href="{{ url_for('product_track') }}" class="mobile-nav-item">
+                <i class="fas fa-search-location"></i> Track Order
+            </a>
+            <a href="{{ url_for('contact_us') }}" class="mobile-nav-item">
+                <i class="fas fa-envelope"></i> Contact
+            </a>
+        </div>
+        
+        <div class="mobile-cat-title">Categories</div>
+        <div class="mobile-cat-list">
+            <a href="{{ url_for('shop') }}" class="mobile-cat-item">All Categories</a>
+            {% for category in categories %}
+            <a href="{{ url_for('shop', category=category.id) }}" class="mobile-cat-item">
+                {{ category.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="container header-inner">
+            <div class="header-left">
+                <div class="mobile-menu-toggle" onclick="toggleMenu()">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <a href="{{ url_for('purchase_plans') }}" class="logo-link-desktop">
+                    <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="Logo" class="logo">
+                </a>
+            </div>
+            
+            <a href="{{ url_for('purchase_plans') }}" class="logo-link-mobile">
+                <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="Logo" class="logo">
+            </a>
+
+            <nav class="nav-links-desktop">
+                <a href="{{ url_for('purchase_plans') }}">SaaS Plans</a>
+                <a href="{{ url_for('shop') }}">Products</a>
+                <a href="{{ url_for('contact_us') }}">Contact</a>
+                <a href="{{ url_for('product_track') }}" class="btn-secondary">
+                    <i class="fas fa-box" style="margin-right: 8px;"></i> Track
+                </a>
+            </nav>
+            
+            <a href="{{ url_for('cart') }}" class="btn-primary">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-text">Cart</span>
+                {% if cart_item_count > 0 %}
+                <span class="cart-badge">{{ cart_item_count }}</span>
+                {% endif %}
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="padding: 0 1rem; margin-top: 1rem;">
+                {% for category, message in messages %}
+                    <div style="padding: 12px; border-radius: 6px; margin-bottom: 10px; font-size: 0.9rem; background: {{ '#f0fdf4' if category=='success' else '#fff1f2' }}; color: {{ '#166534' if category=='success' else '#be123c' }}; border: 1px solid {{ '#bbf7d0' if category=='success' else '#fecdd3' }};">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="shop-layout">
+            
+            <aside class="shop-sidebar">
+                <h3>Categories</h3>
+                <ul class="category-list">
+                    <li>
+                        <a href="{{ url_for('shop') }}" class="{{ 'active' if not category_filter_id else '' }}">
+                            All Categories
+                        </a>
+                    </li>
+                    {% for category in categories %}
+                    <li>
+                        <a href="{{ url_for('shop', category=category.id, search=search_term, sort_by=sort_by) }}" 
+                           class="{{ 'active' if category_filter_id == category.id|string else '' }}">
+                            {{ category.name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </aside>
+            
+            <main class="shop-content">
+                
+                <form class="filter-bar" method="GET" action="{{ url_for('shop') }}">
+                    <div class="search-container">
+                        <input type="search" name="search" placeholder="Search in shop..." value="{{ search_term or '' }}">
+                        <button type="submit"><i class="fas fa-search"></i></button>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <select name="sort_by" id="sort_by" onchange="this.form.submit()">
+                            <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price: Low &rarr; High</option>
+                            <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price: High &rarr; Low</option>
+                            <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+                        </select>
+                    </div>
+                </form>
+
+                {% if products %}
+                <div class="flash-sale-container">
+                    <div class="flash-header">
+                        <span class="flash-title">Flash Sale</span>
+                        <a href="{{ url_for('shop', sort_by='price_asc') }}" class="shop-more-btn">See More ></a>
+                    </div>
+                    <div class="flash-scroll-wrapper">
+                        {% for product in products %}
+                            {% set discount = (product.discount_percent or 0) | int %}
+                            
+                            {% if discount > 0 %}
+                            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="flash-card">
+                                <span class="flash-discount-tag">-{{ discount }}%</span>
+                                <img src="{{ product.image_url or 'https://via.placeholder.com/150' }}" alt="{{ product.name }}" class="flash-img">
+                                <div class="flash-details">
+                                    <h4>{{ product.name }}</h4>
+                                    {% set new_p = product.selling_price * (1 - discount/100) %}
+                                    <div class="flash-price">৳{{ "%.0f"|format(new_p) }}</div>
+                                    <div class="flash-old-price">৳{{ "%.0f"|format(product.selling_price) }}</div>
+                                </div>
+                            </a>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% set ns = namespace(found=false) %}
+                        {% for p in products %}{% if (p.discount_percent or 0) > 0 %}{% set ns.found = true %}{% endif %}{% endfor %}
+                        
+                        {% if not ns.found %}
+                            {% for product in products[:4] %}
+                            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="flash-card">
+                                <img src="{{ product.image_url or 'https://via.placeholder.com/150' }}" alt="{{ product.name }}" class="flash-img">
+                                <div class="flash-details">
+                                    <h4>{{ product.name }}</h4>
+                                    <div class="flash-price" style="color:var(--color-primary)">৳{{ "%.0f"|format(product.selling_price) }}</div>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="product-grid">
+                    {% if products %}
+                        {% for product in products %}
+                        <div class="product-card">
+                            {% set discount = (product.discount_percent or 0) | int %}
+                            
+                            {% if discount > 0 %}
+                                <div class="discount-badge-pill">-{{ discount }}%</div>
+                            {% endif %}
+                            
+                            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image-container">
+                                <img src="{{ product.image_url or 'https://via.placeholder.com/300' }}" alt="{{ product.name }}" class="product-image">
+                            </a>
+                            <div class="product-content">
+                                <h4>
+                                    <a href="{{ url_for('product_detail', product_id=product.id) }}">{{ product.name }}</a>
+                                </h4>
+                                
+                                <div class="star-rating">
+                                    <span class="stars">
+                                        {% for i in range(1, 6) %}
+                                            <i class="fas fa-star" {% if i > product.average_rating | round(0) %}style="color: #e0e0e0;"{% endif %}></i>
+                                        {% endfor %}
+                                    </span>
+                                    <span>({{ product.total_reviews or 0 }})</span>
+                                </div>
+                                
+                                <div class="price-wrapper">
+                                    {% if discount > 0 %}
+                                        {% set new_price = product.selling_price * (1 - discount / 100) %}
+                                        <div class="product-price-new">
+                                            ৳{{ "%.2f"|format(new_price) }}
+                                            <span class="product-price-old">৳{{ "%.2f"|format(product.selling_price) }}</span>
+                                        </div>
+                                    {% else %}
+                                        <div class="product-price-regular">
+                                            ৳{{ "%.2f"|format(product.selling_price) }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="product-buttons">
+                                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" style="flex: 1;">
+                                        <button type="submit" class="product-btn btn-add-cart" style="width: 100%;">
+                                            <i class="fas fa-cart-plus" style="margin-right: 4px;"></i> Add
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('buy_now', product_id=product.id) }}" method="POST" style="flex: 1;">
+                                        <button type="submit" class="product-btn btn-buy-now" style="width: 100%;">
+                                            Buy Now
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-results">
+                            <h2>No products found</h2>
+                            <p>Try adjusting your search or filters.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </main>
+            
+        </div>
+        
+        <footer class="company-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+    </div>
+    
+    <script>
+        function toggleMenu() {
+            document.getElementById('mobile-sidebar-nav').classList.toggle('mobile-active');
+            document.getElementById('mobile-menu-overlay').classList.toggle('mobile-active');
+        }
+    </script>
+</body>
+</html>

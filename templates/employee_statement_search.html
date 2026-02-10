@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Statement Search{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1 class="page-title">Generate Statement</h1>
+        <p class="page-subtitle">Search for a customer to view their history.</p>
+    </div>
+
+    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto;">
+        <form method="POST">
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">Customer (Name, Email, or Phone)</label>
+                <input type="text" name="search_term" required placeholder="e.g. John Doe or 017..." 
+                       value="{{ search_term if search_term else '' }}"
+                       style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">Start Date</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" required 
+                           style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">End Date</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" required
+                           style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                </div>
+            </div>
+
+            <button type="submit" style="width: 100%; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                Search & Generate
+            </button>
+        </form>
+    </div>
+
+    {% if customers %}
+    <div style="margin-top: 30px; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <h3 style="margin-bottom: 15px;">Select Customer:</h3>
+        {% for cust in customers %}
+        <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-weight: bold;">{{ cust.full_name }}</div>
+                <div style="font-size: 13px; color: #64748b;">{{ cust.email }} | {{ cust.phone_number }}</div>
+            </div>
+            <a href="{{ url_for('view_customer_statement', customer_id=cust.id, start=start_date, end=end_date) }}" 
+               style="background: #ecfdf5; color: #059669; padding: 8px 15px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+               Select
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

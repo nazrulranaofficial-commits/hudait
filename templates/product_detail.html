@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }} - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-primary: #5A67D8;
+            --color-primary-dark: #434190;
+            --color-success: #10b981;
+            --color-danger: #ef4444;
+            --color-warning: #f59e0b;
+            --color-text-dark: #1a202c;
+            --color-text-light: #64748b;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f8fafc;
+            --color-sale: #f85606;
+            --radius: 12px;
+        }
+        
+        body { font-family: 'Inter', sans-serif; margin: 0; background-color: #ffffff; color: var(--color-text-light); line-height: 1.6; }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; box-sizing: border-box; }
+        
+        /* HEADER (Matches Shop) */
+        .header { background-color: #ffffff; position: sticky; top: 0; z-index: 900; box-shadow: 0 1px 4px rgba(0,0,0,0.05); padding: 0.8rem 0; margin-bottom: 2rem; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 1rem; min-height: 40px; }
+        .header-left { display: flex; align-items: center; gap: 1rem; z-index: 10; }
+        .logo { max-height: 40px; width: auto; }
+        .logo-link-desktop { display: block; }
+        .logo-link-mobile { display: none; }
+        .mobile-menu-toggle { display: none; font-size: 1.4rem; color: var(--color-text-dark); cursor: pointer; width: 40px; height: 40px; align-items: center; justify-content: flex-start; }
+        .nav-links-desktop { display: flex; align-items: center; gap: 1.5rem; }
+        .nav-links-desktop a { color: var(--color-text-dark); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+        .nav-links-desktop a:hover { color: var(--color-primary); }
+        .btn-cart { background-color: var(--color-primary); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; height: 40px; box-sizing: border-box; z-index: 10; }
+        .cart-badge { background-color: white; color: var(--color-primary); font-size: 0.75rem; font-weight: 800; padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
+
+        /* MOBILE MENU */
+        .mobile-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1999; }
+        .mobile-menu-overlay.active { display: block; }
+        .mobile-sidebar-nav { display: none; position: fixed; left: -300px; top: 0; bottom: 0; width: 280px; z-index: 2000; background-color: #ffffff; overflow-y: auto; transition: left 0.3s ease; padding: 1.5rem; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        .mobile-sidebar-nav.active { display: flex; left: 0; }
+        .mobile-menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #f0f0f0; padding-bottom: 1rem; }
+        .mobile-menu-title { font-size: 1.2rem; font-weight: 800; color: var(--color-text-dark); }
+        .close-menu { font-size: 1.8rem; cursor: pointer; color: var(--color-text-light); line-height: 0.8; }
+        .mobile-nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; font-size: 1rem; font-weight: 600; color: var(--color-text-dark); text-decoration: none; border-bottom: 1px solid #f8faff; transition: color 0.2s; }
+        .mobile-nav-item i { width: 24px; text-align: center; color: var(--color-text-light); }
+        .mobile-nav-item:hover { color: var(--color-primary); }
+        .mobile-cat-title { margin-top: 2rem; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 700; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 1px; }
+        .mobile-cat-list { display: flex; flex-direction: column; gap: 6px; }
+        .mobile-cat-item { display: block; padding: 10px 14px; font-size: 0.95rem; color: var(--color-text-dark); text-decoration: none; border-radius: 8px; background: #f8fafc; transition: all 0.2s; font-weight: 500; }
+        .mobile-cat-item:hover { background: #eff6ff; color: var(--color-primary); }
+
+        /* PRODUCT LAYOUT */
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 4rem; }
+        .image-wrapper { background-color: var(--color-bg-light); border-radius: 16px; border: 1px solid var(--color-border); padding: 2rem; display: flex; align-items: center; justify-content: center; height: 500px; position: relative; }
+        .product-img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; transition: transform 0.3s; }
+        .product-img:hover { transform: scale(1.05); }
+        .sale-badge-large { position: absolute; top: 20px; left: 20px; background: var(--color-sale); color: white; font-weight: 700; padding: 6px 14px; border-radius: 30px; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(248, 86, 6, 0.3); }
+        
+        .product-info { display: flex; flex-direction: column; justify-content: center; }
+        .breadcrumb { font-size: 0.9rem; color: var(--color-text-light); margin-bottom: 1rem; }
+        .breadcrumb a { text-decoration: none; color: var(--color-primary); font-weight: 500; }
+        .product-title { font-size: 2.5rem; font-weight: 800; color: var(--color-text-dark); line-height: 1.2; margin: 0 0 1rem 0; }
+        
+        .meta-row { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); }
+        .rating-box { display: flex; align-items: center; gap: 6px; font-size: 1rem; }
+        .stars { color: var(--color-warning); }
+        .review-count { color: var(--color-text-light); font-size: 0.9rem; text-decoration: underline; }
+        .stock-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+        .in-stock { background: #dcfce7; color: #166534; }
+        .out-stock { background: #fee2e2; color: #991b1b; }
+
+        .price-container { margin-bottom: 2rem; }
+        .price-current { font-size: 2.5rem; font-weight: 800; color: var(--color-primary); }
+        .price-old { font-size: 1.25rem; color: var(--color-text-light); text-decoration: line-through; margin-left: 1rem; }
+        .save-text { display: block; font-size: 0.9rem; color: var(--color-sale); font-weight: 600; margin-top: 4px; }
+        .desc-text { font-size: 1.05rem; line-height: 1.7; color: var(--color-text-light); margin-bottom: 2rem; }
+
+        .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+        .btn-action { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border-radius: 10px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; border: none; width: 100%; }
+        .btn-add { background: #eff6ff; color: var(--color-primary); border: 2px solid #eff6ff; }
+        .btn-add:hover { border-color: var(--color-primary); background: white; }
+        .btn-buy { background: var(--color-text-dark); color: white; border: 2px solid var(--color-text-dark); }
+        .btn-buy:hover { background: black; border-color: black; }
+
+        /* REVIEWS */
+        .reviews-container { max-width: 800px; margin: 0 auto 4rem; }
+        .section-heading { font-size: 1.8rem; font-weight: 700; color: var(--color-text-dark); padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
+        .review-card { background: white; border: 1px solid var(--color-border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .review-header { display: flex; justify-content: space-between; margin-bottom: 0.8rem; }
+        .reviewer-info { display: flex; flex-direction: column; }
+        .reviewer-name { font-weight: 700; color: var(--color-text-dark); }
+        .verified-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--color-success); font-weight: 600; background: #f0fdf4; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
+        .review-title { font-weight: 700; color: var(--color-text-dark); margin-bottom: 0.5rem; }
+        .review-body { color: var(--color-text-light); line-height: 1.6; }
+
+        .review-form-card { background: var(--color-bg-light); border-radius: 16px; padding: 2rem; border: 1px solid var(--color-border); }
+        .form-input { width: 100%; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; box-sizing: border-box; font-family: inherit; }
+        .form-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.1); }
+        .btn-submit { background: var(--color-primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+        .btn-submit:hover { background: var(--color-primary-dark); }
+
+        .company-footer { text-align: center; margin-top: 3rem; padding: 2rem; border-top: 1px solid var(--color-border); color: var(--color-text-light); font-size: 0.9rem; }
+
+        @media (max-width: 992px) {
+            .mobile-menu-toggle { display: flex; }
+            .nav-links-desktop { display: none; }
+            .logo-link-desktop { display: none; }
+            .logo-link-mobile { display: block; position: absolute; left: 50%; transform: translateX(-50%); }
+            .btn-cart .cart-text { display: none; }
+            .product-grid { grid-template-columns: 1fr; gap: 2rem; }
+            .image-wrapper { height: 350px; }
+        }
+        @media (max-width: 768px) {
+            .container { padding: 0 1rem; }
+            .product-title { font-size: 1.8rem; }
+            .price-current { font-size: 2rem; }
+            .action-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-menu-overlay" id="mobileOverlay" onclick="toggleMenu()"></div>
+    <aside class="mobile-sidebar-nav" id="mobileSidebar">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <div class="close-menu" onclick="toggleMenu()">&times;</div>
+        </div>
+        
+        <div class="mobile-links">
+            <a href="{{ url_for('purchase_plans') }}" class="mobile-nav-item"><i class="fas fa-home"></i> Home</a>
+            <a href="{{ url_for('shop') }}" class="mobile-nav-item"><i class="fas fa-shopping-bag"></i> Shop</a>
+            <a href="{{ url_for('product_track') }}" class="mobile-nav-item"><i class="fas fa-search-location"></i> Track Order</a>
+            <a href="{{ url_for('contact_us') }}" class="mobile-nav-item"><i class="fas fa-envelope"></i> Contact</a>
+        </div>
+        
+        <div class="mobile-cat-title">Categories</div>
+        <div class="mobile-cat-list">
+            <a href="{{ url_for('shop') }}" class="mobile-cat-item">All Categories</a>
+            {% if categories %}
+                {% for category in categories %}
+                <a href="{{ url_for('shop', category=category.id) }}" class="mobile-cat-item">{{ category.name }}</a>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="container header-inner">
+            <div class="header-left">
+                <div class="mobile-menu-toggle" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+                <a href="{{ url_for('purchase_plans') }}" class="logo-link-desktop">
+                    <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="Logo" class="logo">
+                </a>
+            </div>
+            <a href="{{ url_for('purchase_plans') }}" class="logo-link-mobile">
+                <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="Logo" class="logo">
+            </a>
+            <nav class="nav-links-desktop">
+                <a href="{{ url_for('purchase_plans') }}">Home</a>
+                <a href="{{ url_for('shop') }}">Shop</a>
+                <a href="{{ url_for('product_track') }}">Track</a>
+            </nav>
+            <a href="{{ url_for('cart') }}" class="btn-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-text">Cart</span>
+                {% if cart_item_count > 0 %}
+                <span class="cart-badge">{{ cart_item_count }}</span>
+                {% endif %}
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="margin-bottom: 2rem;">
+                {% for category, message in messages %}
+                    <div style="padding: 12px; border-radius: 8px; font-size: 0.9rem; background: {{ '#f0fdf4' if category=='success' else '#fff1f2' }}; color: {{ '#166534' if category=='success' else '#be123c' }}; border: 1px solid {{ '#bbf7d0' if category=='success' else '#fecdd3' }};">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="product-grid">
+            <div class="image-wrapper">
+                {% set discount = (product.discount_percent or 0) | int %}
+                {% if discount > 0 %}
+                    <div class="sale-badge-large">-{{ discount }}%</div>
+                {% endif %}
+                <img src="{{ product.image_url or 'https://via.placeholder.com/600x600.png?text=No+Image' }}" alt="{{ product.name }}" class="product-img">
+            </div>
+
+            <div class="product-info">
+                <div class="breadcrumb">
+                    <a href="{{ url_for('shop') }}">Shop</a> <span style="margin: 0 8px;">/</span> <span>{{ product.name }}</span>
+                </div>
+
+                <h1 class="product-title">{{ product.name }}</h1>
+
+                <div class="meta-row">
+                    <div class="rating-box">
+                        <span class="stars">
+                            {% for i in range(1, 6) %}
+                                <i class="fas fa-star" {% if i > (product.average_rating or 5) | round(0) %}style="color: #cbd5e1;"{% endif %}></i>
+                            {% endfor %}
+                        </span>
+                        <span class="review-count">({{ reviews|length }} Reviews)</span>
+                    </div>
+                    {% if product.stock_quantity > 0 %}
+                        <div class="stock-badge in-stock"><i class="fas fa-check"></i> In Stock</div>
+                    {% else %}
+                        <div class="stock-badge out-stock"><i class="fas fa-times"></i> Out of Stock</div>
+                    {% endif %}
+                </div>
+
+                <div class="price-container">
+                    {% if discount > 0 %}
+                        {% set original = product.selling_price | float %}
+                        {% set new_price = original * (1 - discount / 100) %}
+                        <div>
+                            <span class="price-current">৳{{ "%.2f"|format(new_price) }}</span>
+                            <span class="price-old">৳{{ "%.2f"|format(original) }}</span>
+                        </div>
+                        <span class="save-text">You save ৳{{ "%.2f"|format(original - new_price) }}!</span>
+                    {% else %}
+                        <div class="price-current">৳{{ "%.2f"|format(product.selling_price) }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="desc-text">{{ product.description }}</div>
+
+                <div class="action-row">
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" style="width:100%">
+                        <button type="submit" class="btn-action btn-add"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+                    </form>
+                    <form action="{{ url_for('buy_now', product_id=product.id) }}" method="POST" style="width:100%">
+                        <button type="submit" class="btn-action btn-buy">Buy Now</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="reviews-container">
+            <div class="section-heading">
+                Customer Reviews
+                <span style="font-size: 1rem; color: var(--color-text-light); font-weight: 500;">
+                    {{ reviews|length }} Review(s)
+                </span>
+            </div>
+
+            {% if reviews %}
+                {% for review in reviews %}
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <span class="reviewer-name">
+                                {{ review.reviewer_name }}
+                                <span class="verified-badge"><i class="fas fa-check-circle"></i> Verified Purchase</span>
+                            </span>
+                            <div class="stars" style="font-size: 0.85rem; margin-top: 4px;">
+                                {% for i in range(1, 6) %}
+                                    <i class="fas fa-star" {% if i > review.rating %}style="color: #cbd5e1;"{% endif %}></i>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--color-text-light);">{{ review.created_at[:10] }}</span>
+                    </div>
+                    <div class="review-title">{{ review.review_title }}</div>
+                    <div class="review-body">{{ review.review_body }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 3rem; background: var(--color-bg-light); border-radius: 12px; color: var(--color-text-light);">
+                    <p>No reviews yet. Be the first to review this product!</p>
+                </div>
+            {% endif %}
+
+            <div class="review-form-card" id="write-review">
+                <h3 style="margin-top:0;">Write a Review</h3>
+                <form action="{{ url_for('submit_review', product_id=product.id) }}" method="POST">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label style="display:block; font-weight:600; margin-bottom:5px;">Your Name</label>
+                            <input type="text" name="reviewer_name" class="form-input" placeholder="e.g. John Doe" required>
+                        </div>
+                        <div>
+                            <label style="display:block; font-weight:600; margin-bottom:5px;">Order Email</label>
+                            <input type="email" name="reviewer_email" class="form-input" placeholder="john@example.com" required>
+                        </div>
+                    </div>
+                    
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Rating</label>
+                    <select name="rating" class="form-input" required>
+                        <option value="5">★★★★★ (Excellent)</option>
+                        <option value="4">★★★★☆ (Good)</option>
+                        <option value="3">★★★☆☆ (Average)</option>
+                        <option value="2">★★☆☆☆ (Poor)</option>
+                        <option value="1">★☆☆☆☆ (Bad)</option>
+                    </select>
+                    
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Review Title</label>
+                    <input type="text" name="review_title" class="form-input" placeholder="e.g. Great product!" required>
+                    
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Your Review</label>
+                    <textarea name="review_body" class="form-input" rows="4" placeholder="Share your experience..." required></textarea>
+                    
+                    <button type="submit" class="btn-submit">Submit Review</button>
+                </form>
+            </div>
+        </div>
+
+        <footer class="company-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('mobileSidebar').classList.toggle('active');
+            document.getElementById('mobileOverlay').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

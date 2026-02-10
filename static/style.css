@@ -1,0 +1,810 @@
+/* static/style.css (Modern & Colorful Redesign V6 - Icon Fix) */
+
+/* --- 1. Global Setup & Colors --- */
+:root {
+    --color-primary: #5A67D8; /* Vibrant purple-blue */
+    --color-primary-dark: #434190;
+    --color-secondary: #38B2AC; /* Teal */
+    --color-background: #f8faff; /* Very light blue */
+    --color-card-bg: #ffffff;
+    --color-text-dark: #2d3748;
+    --color-text-light: #5a657d;
+    --color-border: #e2e8f0;
+    --color-shadow: rgba(90, 103, 216, 0.15);
+    --color-success: #38A169;
+    --color-error: #E53E3E;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text-dark);
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+html, body {
+    height: 100%;
+}
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+/* --- 2. Header & Navigation (Logo Left on PC) --- */
+.header {
+    background-color: var(--color-card-bg);
+    color: var(--color-text-dark);
+    padding: 15px 25px;
+    display: grid;
+    grid-template-columns: auto 1fr auto; /* [Logo] [Spacer] [Nav] */
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+.header .logo {
+    grid-column: 1 / 2;
+    text-align: left;
+}
+.header .logo a {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+.header .logo img {
+    max-height: 50px;
+}
+.header .nav {
+    grid-column: 3 / 4;
+    justify-self: end;
+}
+.header .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.header .nav-links a {
+    color: var(--color-text-light);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease-in-out;
+}
+.header .nav-links a:hover {
+    background-color: var(--color-background);
+    color: var(--color-primary);
+}
+.header .nav-links a i {
+    margin-right: 6px;
+    opacity: 0.7;
+}
+.header .nav-links .nav-logout-btn {
+    background-color: #FEE2E2;
+    color: var(--color-error);
+    font-weight: 600;
+    box-shadow: none;
+}
+.header .nav-links .nav-logout-btn:hover {
+    background-color: #FECACA;
+    color: var(--color-error);
+}
+.nav-welcome {
+    display: none; /* Hide on desktop */
+}
+.mobile-nav-toggle {
+    grid-column: 1 / 2;
+    justify-self: start;
+    display: none; /* Hidden on desktop */
+    background: transparent;
+    border: none;
+    color: var(--color-text-dark);
+    font-size: 24px;
+    cursor: pointer;
+}
+.mobile-nav-close,
+.nav-header,
+.nav-overlay {
+    display: none;
+}
+.sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); border: 0;
+}
+
+/* --- 3. Main Content Area --- */
+.main-content {
+    width: 95%;
+    max-width: 1400px;
+    margin: 30px auto;
+    padding: 0; /* No padding on main content */
+    background-color: transparent;
+    min-height: 70vh;
+}
+
+/* --- 4. Modern Flash Messages (Toasts) --- */
+.flash-messages { list-style: none; padding: 0; margin: 0 0 25px 0; }
+.flash-messages li { 
+    padding: 16px 20px; 
+    border-radius: 8px; 
+    margin-bottom: 12px; 
+    text-align: left; 
+    font-size: 15px; 
+    font-weight: 600;
+    border-left-width: 5px;
+    border-left-style: solid;
+}
+.flash-messages .error { 
+    background-color: #FFF5F5; 
+    color: #C53030;
+    border-color: var(--color-error); 
+}
+.flash-messages .info,
+.flash-messages .success { 
+    background-color: #F0FFF4; 
+    color: #2F855A;
+    border-color: var(--color-success); 
+}
+
+/* --- 5. Modern Tables --- */
+.table-responsive-wrapper {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px var(--color-shadow);
+    margin-top: 25px;
+}
+table { 
+    width: 100%; 
+    border-collapse: collapse;
+    margin-top: 0;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+}
+th, td { 
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border); 
+    text-align: left; 
+    font-size: 15px; 
+    line-height: 1.5;
+    white-space: nowrap;
+}
+th { 
+    background-color: var(--color-card-bg); 
+    color: var(--color-text-dark); 
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+tr:nth-child(even) { background-color: #fcfdff; }
+tr:nth-child(odd) { background-color: var(--color-card-bg); }
+td { color: var(--color-text-light); }
+tr:hover {
+    background-color: #eff6ff; 
+}
+.table-responsive-wrapper table tr:first-child th:first-child { border-top-left-radius: 8px; }
+.table-responsive-wrapper table tr:first-child th:last-child { border-top-right-radius: 8px; }
+.table-responsive-wrapper table tr:last-child td:first-child { border-bottom-left-radius: 8px; }
+.table-responsive-wrapper table tr:last-child td:last-child { border-bottom-right-radius: 8px; }
+tr:last-child td { border-bottom: none; }
+.status-paid { color: var(--color-success); font-weight: 600; }
+.status-pending, .status-Overdue { color: #D97706; font-weight: 600; }
+.action-button { 
+    padding: 8px 14px; 
+    border-radius: 6px; 
+    text-decoration: none; 
+    font-size: 14px; 
+    font-weight: 600; 
+    display: inline-block; 
+    transition: all 0.2s; 
+    text-align: center; 
+    border: none;
+    cursor: pointer;
+}
+.btn-pay { background-color: var(--color-error); color: white; }
+.btn-pay:hover { background-color: #C53030; }
+.btn-view { background-color: var(--color-primary); color: white; }
+.btn-view:hover { background-color: var(--color-primary-dark); }
+
+/* --- 6. Footer --- */
+.footer {
+    text-align: center; 
+    padding: 40px; 
+    background-color: #1a202c; 
+    color: #a0aec0; 
+    font-size: 14px;
+    border-top: 5px solid var(--color-primary);
+}
+.footer-contact p { margin: 5px 0; }
+.footer .social-links { margin-bottom: 15px; }
+.footer .social-links a { color: #cbd5e0; text-decoration: none; margin: 0 10px; font-size: 14px; display: inline-flex; align-items: center; opacity: 0.8; transition: opacity 0.2s; }
+.footer .social-links a:hover { opacity: 1; color: white; }
+.footer .social-links img { max-height: 24px; margin-right: 8px; }
+.footer .social-links a i { margin-right: 8px; font-size: 20px; }
+
+
+/* --- 7. Digital/Modern Dashboard Cards (Employee/Customer) --- */
+.welcome-banner,
+.welcome-banner-employee {
+    background: linear-gradient(90deg, var(--color-primary), #3a4ad1);
+    color: white;
+    padding: 30px 40px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 25px var(--color-shadow);
+}
+.welcome-banner h1, .welcome-banner-employee h2 {
+    color: white; margin: 0; font-size: 28px; font-weight: 700;
+}
+.welcome-banner p, .welcome-banner-employee p {
+    margin: 5px 0 0 0; font-size: 16px; opacity: 0.9;
+}
+
+.dashboard-cards,
+.employee-card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 25px;
+}
+
+.card,
+.employee-card {
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+.card:hover,
+.employee-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px var(--color-shadow);
+}
+
+/* --- *** THIS IS THE FIX *** --- */
+.employee-card-icon {
+    font-size: 32px; /* Restored original size */
+    margin-bottom: 15px;
+    /* Removed width, height, background-color, etc. */
+}
+
+/* Colorful Card Icons (Now sets text color, not background) */
+.icon-appointments { color: #6366F1; } /* Indigo */
+.icon-tickets { color: #EC4899; } /* Pink */
+.icon-billing { color: #10B981; } /* Emerald */
+.icon-payslip { color: #0EA5E9; } /* Sky Blue */
+.icon-expenses { color: #F59E0B; } /* Amber */
+/* --- *** END OF FIX *** --- */
+
+.employee-card h3 {
+    font-size: 20px; font-weight: 600; color: var(--color-text-dark); margin: 0 0 10px 0;
+}
+.employee-card p {
+    font-size: 15px; color: var(--color-text-light); line-height: 1.6; flex-grow: 1; margin-bottom: 20px;
+}
+.employee-card-link {
+    display: block; text-align: center; background-color: var(--color-primary);
+    color: white; padding: 12px 15px; border-radius: 8px;
+    text-decoration: none; font-weight: 600; transition: all 0.2s;
+}
+.employee-card-link:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px var(--color-shadow);
+}
+.link-appointments { background-color: #6366F1; }
+.link-appointments:hover { background-color: #4F46E5; }
+.link-tickets { background-color: #EC4899; }
+.link-tickets:hover { background-color: #DB2777; }
+.link-billing { background-color: #10B981; }
+.link-billing:hover { background-color: #059669; }
+.link-payslip { background-color: #0EA5E9; }
+.link-payslip:hover { background-color: #0284C7; }
+.link-expenses { background-color: #F59E0B; }
+.link-expenses:hover { background-color: #D97706; }
+
+
+/* --- 8. Auth/Login Page Specifics --- */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px; 
+}
+.auth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 0;
+    max-width: 850px;
+    width: 100%;
+    background-color: var(--color-card-bg);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden; 
+}
+.instruction-panel {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    color: white;
+    padding: 40px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.instruction-panel h2 { color: white; margin-top: 0; font-weight: 700; line-height: 1.3; }
+.instruction-panel p, .instruction-panel li { font-size: 16px; opacity: 0.9; line-height: 1.6; }
+.instruction-panel ul { list-style: none; padding-left: 0; margin-top: 20px; }
+.instruction-panel li { margin-bottom: 15px; }
+
+.form-content { padding: 40px; }
+.form-content .dev-logo { margin-top: 0; }
+.form-content h1 { margin-bottom: 25px; }
+
+
+/* --- 9. MODERN BUTTON & FORM STYLES --- */
+.btn, .login-btn,
+input[type="submit"],
+button[type="submit"] {
+    display: inline-block;
+    font-weight: 600;
+    color: #ffffff;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    background-color: var(--color-primary);
+    border: 1px solid transparent;
+    padding: 12px 20px;
+    font-size: 16px;
+    line-height: 1.5;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+.btn:hover, .login-btn:hover,
+input[type="submit"]:hover,
+button[type="submit"]:hover {
+    background-color: var(--color-primary-dark);
+    box-shadow: 0 4px 15px var(--color-shadow);
+}
+.login-btn, button[type="submit"] {
+    width: 100%; /* Make form buttons full-width */
+}
+.btn-secondary {
+    background-color: #6c757d;
+    color: #ffffff;
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+select {
+    display: inline-block;
+    width: auto;
+    padding: 10px 40px 10px 15px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text-dark);
+    background-color: #ffffff;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    margin: 0 5px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25em 1.25em;
+}
+select:focus {
+    border-color: var(--color-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.2);
+}
+
+
+/*
+========================================
+*** 10. FINAL RESPONSIVE MEDIA QUERIES ***
+========================================
+*/
+
+@media (max-width: 900px) {
+    /* --- Mobile Header & Slide-in Navigation --- */
+    .header {
+        padding: 15px 20px;
+        grid-template-columns: auto 1fr; /* [Button] [Logo] */
+    }
+    .header .logo {
+        grid-column: 2 / 3;
+        text-align: center; /* Center logo on mobile */
+    }
+    .mobile-nav-toggle {
+        display: block; /* Show hamburger */
+        grid-column: 1 / 2;
+        z-index: 1001; /* Above everything */
+    }
+    .header .nav {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 300px;
+        background-color: #2d3748; /* Dark BG */
+        color: white;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    }
+    .header .nav.active {
+        transform: translateX(0);
+    }
+    .nav-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        display: none;
+    }
+    .nav-overlay.active {
+        display: block;
+    }
+    .nav-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #4a5568;
+    }
+    .nav-header strong {
+        font-size: 18px;
+        color: white;
+    }
+    .mobile-nav-close {
+        display: block;
+        background: none;
+        border: none;
+        color: #a0aec0;
+        font-size: 20px;
+        cursor: pointer;
+    }
+    .header .nav-links {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+    .header .nav-links a {
+        margin: 0;
+        padding: 18px 20px;
+        border-bottom: 1px solid #4a5568;
+        border-radius: 0;
+        font-size: 16px;
+        text-align: left;
+        color: #e2e8f0;
+    }
+    .header .nav-links a:hover {
+        background-color: var(--color-primary);
+        color: white;
+    }
+    .header .nav-links .nav-logout-btn {
+        background-color: transparent;
+        color: #FEB2B2; /* Light red */
+        font-weight: 600;
+    }
+    .header .nav-links .nav-logout-btn:hover {
+        background-color: var(--color-error);
+        color: white;
+    }
+    .nav-welcome {
+        display: block;
+        padding: 20px;
+        font-size: 14px;
+        font-style: italic;
+        color: #a0aec0;
+        border-bottom: 1px solid #4a5568;
+    }
+
+    /* --- Auth/Login Page (FIX) --- */
+    .login-container {
+        align-items: flex-start;
+        padding: 0; /* No padding on container */
+        min-height: 100vh;
+        background-color: var(--color-card-bg); /* Use white BG on mobile */
+    }
+    .auth-grid { 
+        grid-template-columns: 1fr; /* Stack form */
+        max-width: 100%; 
+        box-shadow: none;
+        border-radius: 0; 
+    }
+    .instruction-panel {
+        border-radius: 0; 
+        padding: 30px 20px; 
+        /* This panel is now visible by default */
+    }
+    .form-content {
+        padding: 30px 20px;
+    }
+    /* Add class to body of login/signup for mobile BG */
+    body.login-page-body {
+        background-color: var(--color-card-bg);
+    }
+    
+    /* --- Main Content Area --- */
+    .main-content { 
+        padding: 15px; 
+        min-height: 80vh;
+        width: 100%;
+        margin: 0;
+        box-sizing: border-box;
+    }
+    
+    /* --- *** THE NEW STACKING TABLE FIX *** --- */
+    .table-responsive-wrapper {
+        box-shadow: none;
+        border: none;
+        margin-top: 20px;
+        overflow-x: hidden; /* Disable horizontal scroll */
+        width: 100%;
+    }
+    table { 
+        min-width: 100%; /* No min-width */
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        display: block; /* Force table to be a block */
+    }
+    
+    /* Force table elements to display as blocks */
+    table thead, table tbody, table tr { 
+        display: block; 
+    }
+    
+    /* Hide table headers */
+    table thead tr { 
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    table tr {
+        background-color: var(--color-card-bg) !important;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    table td { 
+        /* Behave like a "row" */
+        border: none;
+        border-bottom: 1px solid var(--color-border); 
+        position: relative;
+        padding-left: 50%; /* Make space for the label */
+        text-align: right; /* Align data to the right */
+        white-space: normal; /* Allow text to wrap */
+        font-weight: 500;
+        display: block; /* Force td to be block */
+    }
+    
+    table tr:last-child {
+        margin-bottom: 0; /* No margin on last card */
+    }
+    table td:last-child {
+        border-bottom: 0; /* No border on last item in card */
+    }
+    
+    /* Add the "header" label before the data */
+    table td:before { 
+        content: attr(data-label); 
+        position: absolute;
+        left: 15px;
+        width: 45%; 
+        padding-right: 10px; 
+        white-space: nowrap;
+        text-align: left;
+        font-weight: 700;
+        color: var(--color-text-dark);
+    }
+    /* --- *** END OF STACKING TABLE FIX *** --- */
+    
+    /* --- Dashboard Cards --- */
+    .dashboard-cards,
+    .employee-card-container {
+        grid-template-columns: 1fr; /* Stack all cards */
+    }
+    .welcome-banner,
+    .welcome-banner-employee {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .welcome-banner h1,
+    .welcome-banner-employee h2 {
+        font-size: 22px;
+    }
+    .welcome-banner p,
+    .employee-card p {
+        font-size: 14px;
+    }
+    .card-body .value {
+        font-size: 2rem;
+    }
+}
+/* --- STYLES FOR PUBLIC PAGES --- */
+
+.secondary-divider {
+    margin-top: 25px;
+    margin-bottom: 20px;
+    border: 0;
+    border-top: 1px solid #e0e0e0;
+}
+.secondary-actions {
+    text-align: center;
+}
+.secondary-actions p {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 10px;
+}
+.btn-secondary {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 10px;
+    box-sizing: border-box; /* Important */
+}
+.btn-outline-success {
+    border: 2px solid #28a745;
+    color: #28a745;
+    background-color: transparent;
+}
+.btn-outline-success:hover {
+    background-color: #28a745;
+    color: white;
+}
+.btn-outline-info {
+    border: 2px solid #17a2b8;
+    color: #17a2b8;
+    background-color: transparent;
+}
+.btn-outline-info:hover {
+    background-color: #17a2b8;
+    color: white;
+}
+.btn-secondary:last-child {
+    margin-bottom: 0;
+}
+
+/* --- STYLES FOR PURCHASE PAGE --- */
+
+.plan-card {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 1.5rem;
+    height: 100%;
+    transition: all 0.2s ease-in-out;
+    text-align: left;
+    color: #333;
+}
+.plan-card:hover {
+    border-color: #007bff;
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.plan-title {
+    font-weight: bold;
+    color: #007bff;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+.plan-price {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 1rem;
+}
+.plan-price-new {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+.plan-price-old {
+    font-size: 1rem;
+    color: #888;
+    text-decoration: line-through;
+    margin-left: 8px;
+}
+.plan-features {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 1rem;
+    color: #555;
+}
+.plan-features li {
+    margin-bottom: 0.5rem;
+    padding-left: 25px;
+    position: relative;
+}
+.plan-features li::before {
+    content: '✔';
+    color: #28a745;
+    position: absolute;
+    left: 0;
+    font-size: 1.2rem;
+}
+.payment-instructions {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid #ddd;
+    color: #333;
+}
+.payment-method {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+.payment-method strong {
+    color: #007bff;
+}
+.payment-method span {
+    color: #333;
+}
+.payment-method pre {
+    background-color: #eee;
+    padding: 10px;
+    border-radius: 5px;
+    color: #333;
+    white-space: pre-wrap;
+    border: 1px solid #ccc;
+}
+
+/* --- STYLES FOR CONTACT PAGE --- */
+.contact-details {
+    color: #333;
+}
+.contact-item {
+    margin-bottom: 1.5rem;
+}
+.contact-item strong {
+    font-size: 1.1rem;
+    color: #007bff;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+.contact-item p {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+    color: #555;
+}
+.contact-item a {
+    color: #007bff;
+    text-decoration: none;
+}
+.contact-item a:hover {
+    text-decoration: underline;
+}

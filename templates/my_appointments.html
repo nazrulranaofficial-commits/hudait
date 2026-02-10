@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}My Appointments{% endblock %}
+
+{% block content %}
+
+<style>
+    /* --- Layout --- */
+    body { background-color: #f8fafc; }
+    .page-container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+
+    /* --- 1. Stats Grid --- */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card::after {
+        content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+        transform: skewX(-20deg) translateX(20px);
+    }
+    .stat-label { font-size: 13px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 5px; }
+    
+    .border-blue { border-left: 4px solid #3b82f6; }
+    .border-green { border-left: 4px solid #10b981; }
+    .border-purple { border-left: 4px solid #8b5cf6; }
+
+    /* --- 2. Table Section --- */
+    .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .list-title { font-size: 18px; font-weight: 700; color: #1e293b; }
+
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .pro-table { width: 100%; border-collapse: collapse; }
+    .pro-table th {
+        background: #f8fafc; text-align: left; padding: 16px 24px;
+        font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 700;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .pro-table td {
+        padding: 18px 24px; border-bottom: 1px solid #f1f5f9;
+        color: #334155; font-size: 14px; vertical-align: middle;
+    }
+    .pro-table tr:hover { background-color: #f8fafc; }
+
+    /* Avatar & Name Info */
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .user-avatar {
+        width: 36px; height: 36px; background: #e2e8f0; color: #64748b;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 13px; flex-shrink: 0;
+    }
+    .user-text div { line-height: 1.3; }
+    .user-name { font-weight: 600; color: #1e293b; }
+    .user-sub { font-size: 12px; color: #64748b; }
+
+    /* Status Pills */
+    .status-pill {
+        padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .st-scheduled { background: #e0f2fe; color: #0284c7; }
+    .st-completed { background: #dcfce7; color: #166534; }
+    .st-canceled { background: #fee2e2; color: #991b1b; }
+
+    /* Complete Button */
+    .btn-complete {
+        background: white; border: 1px solid #166534; color: #166534;
+        padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+        cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-complete:hover { background: #dcfce7; }
+
+    /* Mobile View */
+    .mobile-view { display: none; }
+    .mob-card {
+        background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px;
+        border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .mob-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed #e2e8f0; }
+    .mob-date { font-weight: 700; color: #1e293b; display: flex; flex-direction: column; line-height: 1.2; }
+    .mob-date span { font-size: 12px; color: #64748b; font-weight: 500; }
+    
+    .mob-row { display: flex; gap: 10px; margin-bottom: 8px; font-size: 14px; }
+    .mob-icon { width: 20px; color: #94a3b8; text-align: center; }
+    
+    .mob-actions { margin-top: 15px; border-top: 1px solid #f1f5f9; padding-top: 10px; display: flex; justify-content: flex-end; }
+
+    @media (max-width: 768px) {
+        .desktop-view { display: none; }
+        .mobile-view { display: block; }
+        .page-container { padding: 15px; }
+        .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-card:last-child { grid-column: span 2; } 
+    }
+</style>
+
+<div class="page-container">
+
+    <div class="stats-grid">
+        <div class="stat-card border-blue">
+            <span class="stat-label">Upcoming</span>
+            <span class="stat-value">{{ stats.upcoming }}</span>
+        </div>
+        <div class="stat-card border-green">
+            <span class="stat-label">Completed</span>
+            <span class="stat-value">{{ stats.completed }}</span>
+        </div>
+        <div class="stat-card border-purple">
+            <span class="stat-label">Total History</span>
+            <span class="stat-value">{{ stats.total }}</span>
+        </div>
+    </div>
+
+    <div class="list-header">
+        <div class="list-title">Appointment Schedule</div>
+    </div>
+
+    <div class="desktop-view table-container">
+        <table class="pro-table">
+            <thead>
+                <tr>
+                    <th width="25%">Date & Time</th>
+                    <th width="25%">
+                        {% if session.user.is_employee %}Customer{% else %}Technician{% endif %}
+                    </th>
+                    <th width="20%">Type</th>
+                    <th width="15%">Status</th>
+                    {% if session.user.is_employee %}<th width="15%">Action</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if appointments %}
+                    {% for appt in appointments %}
+                    <tr>
+                        <td>
+                            <div class="user-name">
+                                {{ datetime.fromisoformat(appt.start_time).astimezone().strftime('%d %b %Y') }}
+                            </div>
+                            <div class="user-sub">
+                                <i class="far fa-clock me-1"></i>
+                                {{ datetime.fromisoformat(appt.start_time).astimezone().strftime('%I:%M %p') }} - 
+                                {{ datetime.fromisoformat(appt.end_time).astimezone().strftime('%I:%M %p') }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                {% if session.user.is_employee %}
+                                    {% set c_name = appt.customers.full_name %}
+                                    {% set c_phone = appt.customers.phone_number %}
+                                    
+                                    <div class="user-avatar">{{ c_name[:2].upper() }}</div>
+                                    <div class="user-text">
+                                        <div class="user-name">{{ c_name }}</div>
+                                        <div class="user-sub">{{ c_phone }}</div>
+                                    </div>
+                                {% else %}
+                                    {% set e_name = appt.employees.full_name %}
+                                    
+                                    <div class="user-avatar">{{ e_name[:2].upper() }}</div>
+                                    <div class="user-text">
+                                        <div class="user-name">{{ e_name }}</div>
+                                        <div class="user-sub">Service Tech</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-weight: 500; color: #475569;">{{ appt.appointment_type }}</span>
+                        </td>
+                        <td>
+                            <span class="status-pill st-{{ appt.status | lower }}">
+                                {{ appt.status }}
+                            </span>
+                        </td>
+                        
+                        {% if session.user.is_employee %}
+                        <td>
+                            {% if appt.status == 'Scheduled' %}
+                                <form action="{{ url_for('complete_appointment', appointment_id=appt.id) }}" method="POST">
+                                    <button type="submit" class="btn-complete" onclick="return confirm('Mark this appointment as completed?');">
+                                        <i class="fas fa-check"></i> Complete
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 50px; color: #94a3b8;">
+                            <i class="far fa-calendar-check fa-3x mb-3"></i>
+                            <p>No appointments found.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mobile-view">
+        {% if appointments %}
+            {% for appt in appointments %}
+            <div class="mob-card">
+                <div class="mob-header">
+                    <div class="mob-date">
+                        {{ datetime.fromisoformat(appt.start_time).astimezone().strftime('%d %b') }}
+                        <span>{{ datetime.fromisoformat(appt.start_time).astimezone().strftime('%Y') }}</span>
+                    </div>
+                    <span class="status-pill st-{{ appt.status | lower }}">
+                        {{ appt.status }}
+                    </span>
+                </div>
+                
+                <div class="mob-row">
+                    <div class="mob-icon"><i class="far fa-clock"></i></div>
+                    <div>
+                        {{ datetime.fromisoformat(appt.start_time).astimezone().strftime('%I:%M %p') }} - 
+                        {{ datetime.fromisoformat(appt.end_time).astimezone().strftime('%I:%M %p') }}
+                    </div>
+                </div>
+
+                <div class="mob-row">
+                    <div class="mob-icon"><i class="far fa-user"></i></div>
+                    <div style="font-weight: 600; color: #1e293b;">
+                        {% if session.user.is_employee %}
+                            {{ appt.customers.full_name }}
+                        {% else %}
+                            {{ appt.employees.full_name }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mob-row">
+                    <div class="mob-icon"><i class="fas fa-tools"></i></div>
+                    <div style="color: #64748b;">{{ appt.appointment_type }}</div>
+                </div>
+
+                {% if session.user.is_employee and appt.status == 'Scheduled' %}
+                <div class="mob-actions">
+                    <form action="{{ url_for('complete_appointment', appointment_id=appt.id) }}" method="POST" style="width:100%">
+                        <button type="submit" class="btn-complete" style="width:100%; justify-content:center; padding:10px;" onclick="return confirm('Mark this appointment as completed?');">
+                            <i class="fas fa-check"></i> Mark as Completed
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <p>No appointments found.</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

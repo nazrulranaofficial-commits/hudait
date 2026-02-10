@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Customer{% endblock %}
+
+{% block content %}
+<style>
+    /* --- Form Cards --- */
+    .form-section {
+        background: white; padding: 25px; border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 25px; border-top: 4px solid #3b82f6;
+    }
+    .form-title {
+        font-size: 17px; font-weight: 700; color: #1e293b; margin-bottom: 20px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .form-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
+    }
+    .form-group label {
+        display: block; font-weight: 600; color: #475569; margin-bottom: 6px; font-size: 13px;
+    }
+    .form-control {
+        width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1;
+        border-radius: 8px; font-size: 14px; background-color: #f8fafc;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        border-color: #3b82f6; background-color: #fff; outline: none;
+    }
+
+    /* --- Buttons --- */
+    .btn-primary {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600;
+        width: 100%; font-size: 15px; cursor: pointer; margin-top: 10px;
+    }
+    .btn-scan {
+        background: #8b5cf6; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 600; height: 42px; cursor: pointer;
+    }
+    .btn-gps {
+        background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; width: 100%; cursor: pointer;
+    }
+
+    /* --- Inventory Table (Mobile Fixed) --- */
+    .inventory-table {
+        width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px;
+        border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+    }
+    .inventory-table th {
+        background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase;
+        padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0;
+    }
+    .inventory-table td {
+        padding: 12px 15px; border-bottom: 1px solid #e2e8f0; color: #1e293b; 
+        font-size: 14px; text-align: left; vertical-align: middle;
+    }
+    .inventory-table td:last-child {
+        text-align: right; width: 1%; white-space: nowrap;
+    }
+    .btn-remove {
+        background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; 
+        border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+
+    /* --- Modal --- */
+    .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+</style>
+
+<div class="page-header" style="margin-bottom: 20px;">
+    <h1 class="page-title">Add Customer</h1>
+</div>
+
+<form method="POST" action="{{ url_for('employee_add_customer') }}">
+    
+    <div class="form-section">
+        <h3 class="form-title"><i class="fas fa-user-circle" style="color:#3b82f6;"></i> Personal Info</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" name="full_name" class="form-control" required placeholder="e.g. Rahim Ahmed">
+            </div>
+            <div class="form-group">
+                <label>Phone *</label>
+                <input type="tel" name="phone_number" class="form-control" required placeholder="e.g. 01712345678">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control" placeholder="e.g. rahim@example.com">
+            </div>
+            <div class="form-group">
+                <label>NID (Optional)</label>
+                <input type="text" name="nid_number" class="form-control" placeholder="National ID">
+            </div>
+        </div>
+        
+        <div class="form-group" style="margin-top: 15px;">
+            <label>Address *</label>
+            <textarea name="address" class="form-control" rows="2" required placeholder="e.g. House 10, Road 5"></textarea>
+        </div>
+
+        <div class="form-grid" style="margin-top: 15px; align-items: end;">
+            <div class="form-group">
+                <label>Latitude</label>
+                <input type="text" name="latitude" id="lat" class="form-control" placeholder="23.xxxxx">
+            </div>
+            <div class="form-group">
+                <label>Longitude</label>
+                <input type="text" name="longitude" id="lng" class="form-control" placeholder="90.xxxxx">
+            </div>
+            <div class="form-group">
+                <button type="button" class="btn-gps" onclick="getLocation()">
+                    <i class="fas fa-crosshairs" style="color: #ef4444;"></i> Get High-Accuracy GPS
+                </button>
+            </div>
+        </div>
+        <div id="loc_status" style="font-size:12px; margin-top:5px; color:#64748b;"></div>
+    </div>
+
+    <div class="form-section" style="border-top-color: #8b5cf6;">
+        <h3 class="form-title"><i class="fas fa-wifi" style="color:#8b5cf6;"></i> Service Plan</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Zone *</label>
+                <select name="zone_id" class="form-control" required>
+                    <option value="">Select Zone</option>
+                    {% for z in zones %}
+                    <option value="{{ z.id }}">{{ z.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Package *</label>
+                <select name="package_id" class="form-control" required>
+                    <option value="">Select Package</option>
+                    {% for p in packages %}
+                    <option value="{{ p.id }}">{{ p.name }} ({{ "%.0f"|format(p.price) }} Tk)</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section" style="border-top-color: #10b981;">
+        <h3 class="form-title"><i class="fas fa-box" style="color:#10b981;"></i> Assign Inventory</h3>
+        
+        <div class="form-grid" style="grid-template-columns: 1fr auto; gap: 10px; align-items: end;">
+            <div class="form-group">
+                <label>Scan QR Code or Type ID</label>
+                <input type="text" id="qr_input" class="form-control" placeholder="Scan Device QR Code">
+            </div>
+            <button type="button" onclick="toggleScanner()" class="btn-scan">
+                <i class="fas fa-qrcode"></i> Scan
+            </button>
+        </div>
+        
+        <div id="reader" style="width:100%; margin-top:10px; border-radius:8px; overflow:hidden; display:none;"></div>
+        
+        <button type="button" onclick="checkAndAddItem()" class="btn-gps" style="margin-top:15px; background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0;">
+            <i class="fas fa-plus"></i> Check & Add Item
+        </button>
+
+        <table class="inventory-table" id="inventory_table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Serial No.</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="inventory_list_body"></tbody>
+        </table>
+        
+        <div id="hidden_inputs_container"></div>
+    </div>
+
+    <div class="form-section" style="border-top-color: #f59e0b;">
+        <h3 class="form-title"><i class="fas fa-receipt" style="color:#f59e0b;"></i> Initial Billing</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>One-Time Cost</label>
+                <input type="number" name="one_time_cost" class="form-control" value="0" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="cost_description" class="form-control" value="Installation Fee" placeholder="Reason for cost">
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn-primary" style="margin-bottom: 40px;">Create Customer Account</button>
+</form>
+
+<div id="snModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:#1e293b; font-size:18px;">Confirm Serial Number</h3>
+        <p style="color:#64748b; font-size:14px; margin-bottom:15px;">
+            Please verify or enter the Serial Number for <strong id="modal_model_name" style="color:#3b82f6;"></strong>.
+        </p>
+        
+        <div class="form-group">
+            <label>Serial Number (S/N)</label>
+            <input type="text" id="modal_sn_input" class="form-control" placeholder="e.g. SN12345678" style="font-weight:600;">
+        </div>
+        <input type="hidden" id="modal_item_id">
+        
+        <div style="margin-top:20px; display:flex; gap:10px;">
+            <button type="button" onclick="saveSerialNumber()" class="btn-primary" style="margin-top:0;">Save & Add to List</button>
+        </div>
+        <div style="text-align:center; margin-top:10px;">
+            <a href="javascript:void(0)" onclick="closeModal()" style="color:#94a3b8; font-size:13px; text-decoration:none;">Cancel (Don't add)</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+    // --- GPS Logic (High Accuracy) ---
+    function getLocation() {
+        const stat = document.getElementById('loc_status');
+        if(!navigator.geolocation) { stat.innerText = "GPS Not Supported"; return; }
+        
+        stat.innerText = "Fetching High-Accuracy GPS...";
+        stat.style.color = "#d97706";
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                document.getElementById('lat').value = pos.coords.latitude.toFixed(6);
+                document.getElementById('lng').value = pos.coords.longitude.toFixed(6);
+                stat.innerText = `Success: Accuracy ${pos.coords.accuracy.toFixed(1)}m`; 
+                stat.style.color = "green";
+            },
+            (err) => { 
+                stat.innerText = `GPS Error: ${err.message}`; 
+                stat.style.color = "red"; 
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    }
+
+    // --- Inventory Logic ---
+    const addedItems = new Set();
+
+    async function checkAndAddItem() {
+        const input = document.getElementById('qr_input');
+        const code = input.value.trim();
+        if(!code) { alert("Enter a QR code or ID."); return; }
+
+        try {
+            const res = await fetch('/api/check-inventory', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({qr_code: code})
+            });
+            const data = await res.json();
+            
+            if(!data.success) { alert(data.message); return; }
+            
+            const item = data.item;
+            if(addedItems.has(item.id)) { alert("Item already added."); return; }
+
+            // LOGIC CHANGE: ALWAYS OPEN MODAL
+            openSnModal(item);
+            input.value = "";
+
+        } catch(e) { console.error(e); alert("Network Error"); }
+    }
+
+    function addItemToUI(item) {
+        document.getElementById('inventory_table').style.display = 'table';
+        const tbody = document.getElementById('inventory_list_body');
+        const hiddenDiv = document.getElementById('hidden_inputs_container');
+
+        const tr = document.createElement('tr');
+        tr.id = `row-${item.id}`;
+        tr.innerHTML = `
+            <td><strong>${item.model_name}</strong></td>
+            <td>${item.serial_number}</td>
+            <td>
+                <button type="button" class="btn-remove" onclick="removeItem('${item.id}')">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'inventory_ids[]';
+        inp.value = item.id;
+        inp.id = `input-${item.id}`;
+        hiddenDiv.appendChild(inp);
+
+        addedItems.add(item.id);
+    }
+
+    function removeItem(id) {
+        document.getElementById(`row-${id}`).remove();
+        document.getElementById(`input-${id}`).remove();
+        addedItems.delete(id);
+        if(addedItems.size === 0) document.getElementById('inventory_table').style.display = 'none';
+    }
+
+    // --- Modal Logic ---
+    function openSnModal(item) {
+        document.getElementById('modal_model_name').innerText = item.model_name;
+        document.getElementById('modal_item_id').value = item.id;
+        // PRE-FILL if available, else empty
+        document.getElementById('modal_sn_input').value = item.serial_number || "";
+        document.getElementById('snModal').style.display = 'flex';
+        document.getElementById('modal_sn_input').focus();
+    }
+
+    function closeModal() {
+        document.getElementById('snModal').style.display = 'none';
+    }
+
+    async function saveSerialNumber() {
+        const id = document.getElementById('modal_item_id').value;
+        const sn = document.getElementById('modal_sn_input').value.trim();
+        
+        if(!sn) { alert("Serial Number is required."); return; }
+
+        try {
+            const res = await fetch('/api/update-inventory-sn', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({item_id: id, serial_number: sn})
+            });
+            const data = await res.json();
+            
+            if(data.success) {
+                const name = document.getElementById('modal_model_name').innerText;
+                addItemToUI({ id: id, model_name: name, serial_number: sn });
+                closeModal();
+            } else {
+                alert(data.message);
+            }
+        } catch(e) { alert("Network Error"); }
+    }
+
+    // --- Scanner ---
+    let scanner;
+    function toggleScanner() {
+        const box = document.getElementById('reader');
+        if(box.style.display === 'block') {
+            if(scanner) scanner.stop();
+            box.style.display = 'none';
+        } else {
+            box.style.display = 'block';
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                (text) => {
+                    document.getElementById('qr_input').value = text;
+                    scanner.stop();
+                    box.style.display = 'none';
+                    checkAndAddItem();
+                }
+            );
+        }
+    }
+</script>
+{% endblock %}

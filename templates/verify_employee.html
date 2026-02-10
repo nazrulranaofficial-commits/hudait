@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify: {{ employee.full_name if employee else 'Invalid' }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #F9FAFB;
+            --card-bg: #ffffff;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+            --brand-color: #0056D2;
+            --success-bg: #DEF7EC; --success-text: #03543F;
+            --error-bg: #FDE8E8; --error-text: #9B1C1C;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .verify-card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 400px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            text-align: center;
+            position: relative;
+            border: 1px solid #E5E7EB;
+        }
+        
+        /* --- Header --- */
+        .card-header {
+            background: white;
+            padding: 25px 0 40px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        .company-logo {
+            max-height: 50px;
+            max-width: 80%;
+            object-fit: contain;
+        }
+        .company-text {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--brand-color);
+            margin: 0;
+        }
+
+        /* --- Photo --- */
+        .photo-wrapper {
+            margin-top: -50px;
+            display: inline-block;
+            position: relative;
+        }
+        .emp-photo {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 4px solid white;
+            object-fit: cover;
+            background-color: #F3F4F6;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* --- Status Badge --- */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+        .status-active { background: var(--success-bg); color: var(--success-text); }
+        .status-inactive { background: var(--error-bg); color: var(--error-text); }
+
+        /* --- Info --- */
+        .emp-name { font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 10px 0 2px 0; }
+        .emp-role { font-size: 1rem; color: var(--brand-color); font-weight: 600; margin-bottom: 5px; }
+        
+        /* Smart ID Pill */
+        .smart-id { 
+            display: inline-block; 
+            background: #1F2937; 
+            color: white; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            font-family: monospace; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+        }
+
+        .info-section {
+            padding: 20px 30px;
+            text-align: left;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: flex-start;
+        }
+        .info-label {
+            width: 30px;
+            color: var(--text-sub);
+            font-size: 1.1rem;
+            padding-top: 2px;
+        }
+        .info-val {
+            color: var(--text-main);
+            font-weight: 500;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .info-val small { display: block; color: var(--text-sub); font-weight: 400; font-size: 0.8rem; }
+
+        /* --- Contact Buttons --- */
+        .contact-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 0 30px 30px 30px;
+        }
+        .btn-contact {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-call { background: #EFF6FF; color: var(--brand-color); }
+        .btn-call:hover { background: #DBEAFE; }
+        .btn-email { background: #F3F4F6; color: var(--text-main); }
+        .btn-email:hover { background: #E5E7EB; }
+
+        /* --- Footer (Shop Style) --- */
+        .footer {
+            background: #111827;
+            color: #9CA3AF;
+            text-align: center;
+            padding: 30px 20px;
+            font-size: 0.9rem;
+            margin-top: auto;
+        }
+        .footer strong { color: white; }
+        .footer p { margin: 5px 0; }
+        .footer a { color: #60A5FA; text-decoration: none; }
+        
+    </style>
+</head>
+<body>
+
+    <div class="main-content">
+        {% if error %}
+            <div class="verify-card" style="padding: 40px;">
+                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #EF4444; margin-bottom: 20px;"></i>
+                <h2 style="margin: 0; color: #1F2937;">Verification Failed</h2>
+                <p style="color: #6B7280;">{{ error }}</p>
+                <div style="margin-top: 20px;">
+                    <a href="{{ url_for('verify_manual') }}" class="btn-contact btn-email">Search Again</a>
+                </div>
+            </div>
+        {% else %}
+            <div class="verify-card">
+                <div class="card-header">
+                    {% if company.logo_url %}
+                        <img src="{{ company.logo_url }}" alt="Logo" class="company-logo">
+                    {% else %}
+                        <h2 class="company-text">{{ company.company_name }}</h2>
+                    {% endif %}
+                </div>
+
+                <div class="photo-wrapper">
+                    <img src="{{ employee.profile_avatar_url or 'https://ui-avatars.com/api/?background=0D8ABC&color=fff&name=' + employee.full_name }}" alt="Profile" class="emp-photo">
+                </div>
+
+                <div style="padding: 0 20px;">
+                    {% if status == 'active' %}
+                        <div class="status-badge status-active">
+                            <i class="fas fa-check-circle"></i> Verified Active
+                        </div>
+                    {% else %}
+                        <div class="status-badge status-inactive">
+                            <i class="fas fa-ban"></i> Terminated / Inactive
+                        </div>
+                    {% endif %}
+
+                    <h1 class="emp-name">{{ employee.full_name }}</h1>
+                    <div class="emp-role">{{ role }}</div>
+                    <div style="margin-top: 8px;">
+                        <span class="smart-id">{{ smart_id }}</span>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                
+                <div class="info-grid info-section">
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-building"></i></div>
+                        <div class="info-val">
+                            {{ company.company_name }}
+                            <small>{{ company.company_address or company.company_details.address }}</small>
+                        </div>
+                    </div>
+                    
+                    {% if employee.phone_number %}
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-phone"></i></div>
+                        <div class="info-val">
+                            {{ employee.phone_number }}
+                            <small>Employee Contact</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-calendar"></i></div>
+                        <div class="info-val">
+                            Joined {{ employee.created_at[:10] }}
+                            <small>Employment Date</small>
+                        </div>
+                    </div>
+                </div>
+                
+                {% set contact_phone = company.contact_phone or company.company_details.phone %}
+                {% set contact_email = company.contact_email or company.company_details.email %}
+                
+                {% if contact_phone or contact_email %}
+                <p style="font-size: 0.8rem; color: #9CA3AF; margin-bottom: 10px;">Need to verify further?</p>
+                <div class="contact-actions">
+                    {% if contact_phone %}
+                        <a href="tel:{{ contact_phone }}" class="btn-contact btn-call">
+                            <i class="fas fa-phone-alt"></i> Call Office
+                        </a>
+                    {% endif %}
+                    
+                    {% if contact_email %}
+                        <a href="mailto:{{ contact_email }}" class="btn-contact btn-email">
+                            <i class="fas fa-envelope"></i> Email HR
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div style="padding-bottom: 20px;">
+                    <a href="{{ url_for('verify_manual') }}" style="font-size: 0.85rem; color: var(--text-sub); text-decoration: none;">
+                        <i class="fas fa-search"></i> Search Another Employee
+                    </a>
+                </div>
+
+            </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer">
+        {% if company and company.company_name %}
+            <p><strong>{{ company.company_name }}</strong></p>
+            <p>{{ company.company_address or company.company_details.address or 'Address not available' }}</p>
+            <p>
+                {{ company.contact_phone or company.company_details.phone }} 
+                {% if company.contact_email or company.company_details.email %} 
+                    | {{ company.contact_email or company.company_details.email }} 
+                {% endif %}
+            </p>
+        {% endif %}
+        <p style="margin-top: 15px; font-size: 0.8rem; opacity: 0.7;">
+            Powered by <strong>{{ app_name }}</strong>
+        </p>
+    </footer>
+
+</body>
+</html>

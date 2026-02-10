@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Support Tickets{% endblock %}
+
+{% block content %}
+    <style>
+        /* --- Global Page Styling --- */
+        body {
+            background-color: #f4f6f9;
+        }
+
+        .page-header {
+            margin-bottom: 35px;
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .page-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+        .page-subtitle {
+            color: #64748b;
+            font-size: 15px;
+            margin: 0;
+        }
+
+        /* --- Modern Card Container --- */
+        .ticket-card-container {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+            overflow: hidden; 
+        }
+
+        /* --- Button Styling --- */
+        .btn-create-ticket {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none; 
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+            transition: all 0.2s ease;
+        }
+        .btn-create-ticket:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px -3px rgba(37, 99, 235, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+
+        /* --- Table Styling --- */
+        .desktop-view { display: block; }
+        
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 0;
+        }
+        .custom-table thead {
+            background-color: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .custom-table th {
+            padding: 16px 24px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            text-align: left;
+        }
+        .custom-table td {
+            padding: 20px 24px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            font-size: 14px;
+        }
+        .custom-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* --- Typography & Links --- */
+        .ticket-number-link {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+            color: #2563eb;
+            background: #eff6ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .ticket-number-link:hover {
+            background: #dbeafe;
+            text-decoration: none;
+        }
+        .subject-text {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .date-text {
+            color: #64748b;
+            font-size: 13px;
+        }
+        .contact-info {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        /* --- Status Badges --- */
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-open { background-color: #ffedd5; color: #c2410c; } /* Orange */
+        .status-resolved { background-color: #dcfce7; color: #15803d; } /* Green */
+        .status-closed { background-color: #f1f5f9; color: #475569; } /* Gray */
+        .status-inprogress { background-color: #dbeafe; color: #1e40af; } /* Blue */
+
+        /* --- Mobile View (Cards) --- */
+        .mobile-view { display: none; }
+        
+        .mobile-ticket-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            position: relative;
+            transition: transform 0.2s;
+        }
+        .mobile-ticket-card:active {
+            transform: scale(0.98);
+        }
+        .m-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .m-subject {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .m-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .m-link-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 1;
+        }
+
+        /* --- Responsive Breakpoints --- */
+        @media (max-width: 991px) {
+            .desktop-view { display: none; }
+            .mobile-view { display: block; }
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .btn-create-ticket {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <div class="container-fluid px-md-5 px-3 mt-4 mb-5">
+        
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Support Tickets</h1>
+                <p class="page-subtitle">View your history or submit a new request.</p>
+            </div>
+            <a href="{{ url_for('create_ticket') }}" class="btn-create-ticket">
+                <i class="fas fa-plus"></i> Create New Ticket
+            </a>
+        </div>
+
+        <div class="desktop-view">
+            <div class="ticket-card-container">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket #</th>
+                            <th>Subject</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if tickets %}
+                            {% for ticket in tickets %}
+                                {% set status_lower = ticket.status|string|lower|replace(' ', '') %}
+                                {% if status_lower == 'false' or status_lower == 'inprogress' %}{% set status_class = 'inprogress' %}{% set status_text = 'In Progress' %}
+                                {% elif status_lower == 'open' %}{% set status_class = 'open' %}{% set status_text = 'Open' %}
+                                {% elif status_lower == 'resolved' %}{% set status_class = 'resolved' %}{% set status_text = 'Resolved' %}
+                                {% else %}{% set status_class = 'closed' %}{% set status_text = ticket.status %}{% endif %}
+
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="ticket-number-link">
+                                            {{ ticket.ticket_number }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="subject-text">{{ ticket.subject }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ status_class }}">
+                                            {% if status_class == 'open' %}<i class="fas fa-exclamation-circle"></i>
+                                            {% elif status_class == 'resolved' %}<i class="fas fa-check-circle"></i>
+                                            {% elif status_class == 'inprogress' %}<i class="fas fa-spinner"></i>
+                                            {% else %}<i class="fas fa-archive"></i>{% endif %}
+                                            {{ status_text }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if ticket.employees %}
+                                            <div class="contact-info">
+                                                <strong>{{ ticket.employees.full_name }}</strong><br>
+                                                <i class="fas fa-phone-alt me-1" style="font-size: 11px;"></i> {{ ticket.employees.phone_number }}
+                                            </div>
+                                        {% else %}
+                                            <span style="color: #94a3b8;">-- Unassigned --</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="date-text"><i class="far fa-clock me-1"></i> {{ ticket.created_at.strftime('%d %b %Y') }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 60px 20px;">
+                                    <div style="color: #cbd5e1; display: flex; flex-direction: column; align-items: center;">
+                                        <i class="fas fa-life-ring fa-3x mb-3"></i>
+                                        <p style="font-size: 16px; color: #94a3b8;">You haven't submitted any tickets yet.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mobile-view">
+            {% if tickets %}
+                {% for ticket in tickets %}
+                    {% set status_lower = ticket.status|string|lower|replace(' ', '') %}
+                    {% if status_lower == 'false' or status_lower == 'inprogress' %}{% set status_class = 'inprogress' %}{% set status_text = 'In Progress' %}
+                    {% elif status_lower == 'open' %}{% set status_class = 'open' %}{% set status_text = 'Open' %}
+                    {% elif status_lower == 'resolved' %}{% set status_class = 'resolved' %}{% set status_text = 'Resolved' %}
+                    {% else %}{% set status_class = 'closed' %}{% set status_text = ticket.status %}{% endif %}
+
+                    <div class="mobile-ticket-card">
+                        <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="m-link-overlay"></a>
+                        
+                        <div class="m-card-header">
+                            <span class="ticket-number-link">{{ ticket.ticket_number }}</span>
+                            <span class="status-badge status-{{ status_class }}">{{ status_text }}</span>
+                        </div>
+                        
+                        <span class="m-subject">{{ ticket.subject }}</span>
+                        
+                        <div class="m-row">
+                            <i class="far fa-clock"></i> {{ ticket.created_at.strftime('%d %b %Y') }}
+                        </div>
+                        
+                        <div class="m-row">
+                            <i class="far fa-user"></i>
+                            {% if ticket.employees %}
+                                {{ ticket.employees.full_name }}
+                            {% else %}
+                                Unassigned
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="color: #cbd5e1; display: flex; flex-direction: column; align-items: center;">
+                        <i class="fas fa-life-ring fa-3x mb-3"></i>
+                        <p style="font-size: 16px; color: #94a3b8;">No tickets found.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+{% endblock %}

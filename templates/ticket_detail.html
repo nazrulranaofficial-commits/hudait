@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}View Ticket{% endblock %}
+
+{% block content %}
+<style>
+    /* --- Global & Layout --- */
+    body {
+        background-color: #f4f6f9;
+    }
+    
+    .ticket-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .back-btn {
+        color: #64748b;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: 600;
+        transition: color 0.2s;
+    }
+    .back-btn:hover {
+        color: #1e293b;
+    }
+    .ticket-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    /* --- Grid Layout --- */
+    .ticket-grid {
+        display: grid;
+        grid-template-columns: 1fr 350px; /* Main Content | Sidebar */
+        gap: 25px;
+    }
+
+    /* --- Cards --- */
+    .modern-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    /* --- Sidebar (Details) --- */
+    .details-header {
+        padding: 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 16px;
+        font-weight: 700;
+        color: #334155;
+        background-color: #f8fafc;
+    }
+    .details-body {
+        padding: 20px;
+    }
+    .info-group {
+        margin-bottom: 20px;
+    }
+    .info-group:last-child {
+        margin-bottom: 0;
+    }
+    .info-label {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+    }
+    .info-value {
+        font-size: 15px;
+        color: #0f172a;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* --- Status Badges --- */
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .status-open { background-color: #ffedd5; color: #c2410c; }
+    .status-resolved { background-color: #dcfce7; color: #15803d; }
+    .status-closed { background-color: #f1f5f9; color: #475569; }
+    .status-inprogress { background-color: #dbeafe; color: #1e40af; }
+
+    /* --- Conversation Area --- */
+    .conversation-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #f1f5f9;
+        background-color: #ffffff;
+    }
+    .conversation-body {
+        padding: 25px;
+        background-color: #f9fafb; /* Slight contrast for chat area */
+        min-height: 400px;
+    }
+
+    /* Message Bubbles */
+    .message-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        overflow: hidden;
+    }
+    .message-card.staff-reply {
+        border-left: 4px solid #3b82f6; /* Blue accent for staff */
+        background-color: #fdfdfd;
+    }
+    
+    .msg-header {
+        padding: 12px 20px;
+        background-color: #f8fafc;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .msg-author {
+        font-weight: 600;
+        color: #334155;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .role-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .role-customer { background: #e2e8f0; color: #475569; }
+    .role-staff { background: #dbeafe; color: #1e40af; }
+
+    .msg-body {
+        padding: 20px;
+        font-size: 15px;
+        color: #1e293b;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    /* --- Rating Section --- */
+    .rating-container {
+        margin-bottom: 25px;
+        background: linear-gradient(to right, #ecfdf5, #f0fdf4);
+        border: 1px solid #bbf7d0;
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+    }
+    .rating-title {
+        color: #166534;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    .rating-text {
+        color: #15803d;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    
+    /* Stars */
+    .star-rating {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: center;
+        gap: 8px;
+        margin: 10px 0 20px 0;
+    }
+    .star-rating input { display: none; }
+    .star-rating label { 
+        font-size: 32px; 
+        color: #cbd5e1; 
+        cursor: pointer; 
+        transition: color 0.2s, transform 0.1s;
+    }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { 
+        color: #f59e0b; /* Amber 500 */
+    }
+    .star-rating label:hover { transform: scale(1.1); }
+
+    .feedback-input {
+        width: 100%;
+        max-width: 500px;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        margin-bottom: 15px;
+        font-family: inherit;
+    }
+    .btn-submit-rating {
+        background-color: #16a34a;
+        color: white;
+        padding: 10px 24px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-submit-rating:hover { background-color: #15803d; }
+
+    /* Static Stars (Read Only) */
+    .static-stars { font-size: 24px; color: #f59e0b; margin-bottom: 10px; }
+    .static-stars span { color: #cbd5e1; }
+    .feedback-quote { 
+        color: #4b5563; 
+        font-style: italic; 
+        background: rgba(255,255,255,0.6);
+        padding: 10px;
+        border-radius: 6px;
+        display: inline-block;
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 991px) {
+        .ticket-grid {
+            grid-template-columns: 1fr;
+        }
+        .details-sidebar {
+            order: -1; /* Show details first on mobile */
+        }
+    }
+</style>
+
+<div class="container-fluid px-md-5 px-3 mt-4 mb-5">
+    
+    <div class="page-header">
+        <a href="{{ url_for('support_tickets') }}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <div class="ticket-grid">
+        
+        <div class="main-content">
+            
+            {% if ticket.status == 'Resolved' %}
+                <div class="rating-container">
+                    {% if existing_rating %}
+                        <div class="rating-title"><i class="fas fa-check-circle me-2"></i> Feedback Received</div>
+                        <div class="static-stars">
+                            {% for i in range(1, 6) %}
+                                {% if i <= existing_rating.rating %}★{% else %}<span>★</span>{% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if existing_rating.feedback %}
+                            <div class="feedback-quote">"{{ existing_rating.feedback }}"</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="rating-title">Rate our Support</div>
+                        <p class="rating-text">Your issue is resolved. How did we do?</p>
+                        
+                        <form action="{{ url_for('rate_ticket', ticket_id=ticket.id) }}" method="POST">
+                            <div class="star-rating">
+                                <input type="radio" id="star5" name="rating" value="5" required/><label for="star5" title="Excellent">★</label>
+                                <input type="radio" id="star4" name="rating" value="4"/><label for="star4" title="Good">★</label>
+                                <input type="radio" id="star3" name="rating" value="3"/><label for="star3" title="Average">★</label>
+                                <input type="radio" id="star2" name="rating" value="2"/><label for="star2" title="Poor">★</label>
+                                <input type="radio" id="star1" name="rating" value="1"/><label for="star1" title="Very Poor">★</label>
+                            </div>
+                            <textarea name="feedback" class="feedback-input" rows="2" placeholder="Optional comments..."></textarea><br>
+                            <button type="submit" class="btn-submit-rating">Submit Feedback</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <div class="modern-card">
+                <div class="conversation-header">
+                    <h1 class="ticket-title">{{ ticket.subject }}</h1>
+                </div>
+                
+                <div class="conversation-body">
+                    
+                    <div class="message-card">
+                        <div class="msg-header">
+                            <span class="msg-author">
+                                <i class="fas fa-user-circle fa-lg"></i> 
+                                {{ session['user']['customer_name'] }}
+                                <span class="role-badge role-customer">Customer</span>
+                            </span>
+                        </div>
+                        <div class="msg-body">
+                            {{ ticket.description }}
+                        </div>
+                    </div>
+
+                    {% for reply in replies %}
+                    <div class="message-card staff-reply">
+                        <div class="msg-header">
+                            <span class="msg-author" style="color: #1e40af;">
+                                <i class="fas fa-headset fa-lg"></i> 
+                                Support Team
+                                <span class="role-badge role-staff">Staff</span>
+                            </span>
+                        </div>
+                        <div class="msg-body">
+                            {{ reply.message }}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+        </div>
+
+        <div class="details-sidebar">
+            <div class="modern-card">
+                <div class="details-header">Ticket Details</div>
+                <div class="details-body">
+                    
+                    <div class="info-group">
+                        <span class="info-label">Current Status</span>
+                        {% set status_lower = ticket.status|string|lower|replace(' ', '') %}
+                        {% if status_lower == 'false' or status_lower == 'inprogress' %}{% set status_class = 'inprogress' %}{% set status_text = 'In Progress' %}
+                        {% elif status_lower == 'open' %}{% set status_class = 'open' %}{% set status_text = 'Open' %}
+                        {% elif status_lower == 'resolved' %}{% set status_class = 'resolved' %}{% set status_text = 'Resolved' %}
+                        {% else %}{% set status_class = 'closed' %}{% set status_text = ticket.status %}{% endif %}
+                        
+                        <span class="status-badge status-{{ status_class }}">
+                            {% if status_class == 'open' %}<i class="fas fa-exclamation-circle"></i>
+                            {% elif status_class == 'resolved' %}<i class="fas fa-check-circle"></i>
+                            {% elif status_class == 'inprogress' %}<i class="fas fa-spinner"></i>
+                            {% else %}<i class="fas fa-archive"></i>{% endif %}
+                            {{ status_text }}
+                        </span>
+                    </div>
+
+                    <div class="info-group">
+                        <span class="info-label">Ticket ID</span>
+                        <div class="info-value">
+                            <i class="fas fa-hashtag text-muted"></i> {{ ticket.ticket_number }}
+                        </div>
+                    </div>
+
+                    <div class="info-group">
+                        <span class="info-label">Assigned Agent</span>
+                        <div class="info-value">
+                            <i class="fas fa-user-tie text-muted"></i>
+                            {% if ticket.employees %}
+                                {{ ticket.employees.full_name }}
+                            {% else %}
+                                <span class="text-muted" style="font-style: italic;">Unassigned</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if ticket.employees and ticket.employees.phone_number %}
+                    <div class="info-group">
+                        <span class="info-label">Agent Contact</span>
+                        <div class="info-value">
+                            <i class="fas fa-phone text-muted"></i> {{ ticket.employees.phone_number }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="info-group">
+                        <span class="info-label">Date Created</span>
+                        <div class="info-value">
+                            <i class="far fa-calendar-alt text-muted"></i> {{ ticket.created_at[:10] }}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

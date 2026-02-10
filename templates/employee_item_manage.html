@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Item - {{ app_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #F4F7F9; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        h2 { margin-top: 0; color: #1a202c; }
+        .label { font-size: 0.85rem; color: #718096; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .value { font-size: 1.1rem; color: #2D3748; font-weight: 600; margin-bottom: 15px; }
+        
+        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; }
+        .status-instock { background: #C6F6D5; color: #22543D; }
+        .status-assigned { background: #BEE3F8; color: #2A4365; }
+        .status-damaged { background: #FED7D7; color: #822727; }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #4A5568; }
+        select, input, textarea { width: 100%; padding: 12px; border: 1px solid #CBD5E0; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+        
+        .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; margin-bottom: 10px; }
+        .btn-primary { background: #5A67D8; color: white; }
+        .btn-danger { background: #E53E3E; color: white; }
+        .btn-secondary { background: #EDF2F7; color: #4A5568; }
+        
+        /* Scanner Styles */
+        .input-group { display: flex; gap: 10px; }
+        .btn-scan-small { width: auto; padding: 12px 15px; background: #2D3748; color: white; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        #scanner-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
+        #reader { width: 100%; max-width: 500px; background: black; border-radius: 10px; }
+        .close-scan { margin-top: 20px; background: white; color: black; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+
+        /* --- *** NEW: Flash Message Styles *** --- */
+        .flash-container { margin-bottom: 20px; }
+        .status-box { 
+            padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-weight: 500;
+        }
+        .status-box.error { background: #FFF5F5; color: #C53030; border: 1px solid #FC8181; }
+        .status-box.success { background: #F0FFF4; color: #2F855A; border: 1px solid #68D391; }
+        .status-box.warning { background: #FFFAF0; color: #C05621; border: 1px solid #FBD38D; }
+        .status-box.info { background: #EBF8FF; color: #2B6CB0; border: 1px solid #63B3ED; }
+        .status-box i { font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <div id="scanner-modal">
+        <div id="reader"></div>
+        <div class="close-scan" onclick="stopScanner()">Close Camera</div>
+    </div>
+
+    <div class="container">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                {% for category, message in messages %}
+                    <div class="status-box {{ category }}">
+                        <i class="fas {{ 'fa-exclamation-circle' if category == 'error' else 'fa-check-circle' }}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <div class="card">
+            <h2><i class="fas fa-box"></i> Item Details</h2>
+            
+            <div class="label">Model</div>
+            <div class="value">{{ item.model_name }}</div>
+            
+            <div class="label">Serial Number</div>
+            <div class="value">{{ item.serial_number }}</div>
+            
+            <div class="label">Status</div>
+            <div class="value">
+                <span class="status-badge {{ 'status-instock' if item.status == 'In Stock' else 'status-assigned' if 'Assigned' in item.status else 'status-damaged' }}">
+                    {{ item.status }}
+                </span>
+            </div>
+            
+            {% if item.customers %}
+            <div class="label">Assigned To</div>
+            <div class="value">{{ item.customers.full_name }}</div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h2>Update Status</h2>
+            <form method="POST" id="manageForm">
+                <div class="form-group">
+                    <label>Action</label>
+                    <select name="action_type" id="action_type" onchange="toggleFields()">
+                        <option value="assign">Assign to Customer</option>
+                        <option value="replace">Replace Faulty Item</option>
+                        <option value="damaged">Mark as Damaged/Faulty</option>
+                        <option value="stock">Return to Stock</option>
+                    </select>
+                </div>
+
+                <div id="assign_fields">
+                    <div class="form-group">
+                        <label>Filter by Zone</label>
+                        <select id="zone_filter" onchange="filterCustomers()">
+                            <option value="">All Zones</option>
+                            {% for zone in zones %}
+                            <option value="{{ zone.id }}">{{ zone.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select Customer</label>
+                        <input type="text" list="customers_datalist" id="customer_input" placeholder="Search name or phone..." onchange="setCustomerId()">
+                        <datalist id="customers_datalist">
+                            {% for cust in customers %}
+                            <option data-id="{{ cust.id }}" data-zone="{{ cust.zone_id }}" value="{{ cust.full_name }} ({{ cust.phone_number }})"></option>
+                            {% endfor %}
+                        </datalist>
+                        <input type="hidden" name="customer_id" id="customer_id_hidden">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Serial Number <span style="color:red">*</span></label>
+                        <input type="text" name="serial_number" 
+                               value="{{ '' if 'PENDING' in item.serial_number else item.serial_number }}" 
+                               {{ 'readonly' if 'PENDING' not in item.serial_number else '' }}
+                               placeholder="Scan/Type Serial Number">
+                    </div>
+                </div>
+
+                <div id="replace_fields" style="display:none;">
+                    <div class="form-group">
+                        <label>Scan NEW Item QR Code <span style="color:red">*</span></label>
+                        <div class="input-group">
+                            <input type="text" id="new_qr_id" name="new_qr_id" placeholder="Scan QR code...">
+                            <div class="btn-scan-small" onclick="startScanner()">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>New Item Serial Number <span style="color:red">*</span></label>
+                        <input type="text" name="new_serial_number" placeholder="Scan/Type Manufacturer Serial Number">
+                        <small style="color: #718096;">Required if the new item still has a pending ID.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reason for Replacement</label>
+                        <textarea name="notes" placeholder="e.g. Device burnt..."></textarea>
+                    </div>
+                </div>
+                
+                <div id="damage_fields" style="display:none;">
+                    <div class="form-group">
+                        <label>Damage Notes</label>
+                        <textarea name="notes" placeholder="Describe damage..."></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Update Item</button>
+            </form>
+        </div>
+
+        <a href="{{ url_for('employee_scan_qr') }}" class="btn btn-secondary">Scan Another Item</a>
+        <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <script>
+        function toggleFields() {
+            const action = document.getElementById('action_type').value;
+            const assignDiv = document.getElementById('assign_fields');
+            const replaceDiv = document.getElementById('replace_fields');
+            const damageDiv = document.getElementById('damage_fields');
+            
+            assignDiv.style.display = 'none';
+            replaceDiv.style.display = 'none';
+            damageDiv.style.display = 'none';
+            
+            if (action === 'assign') assignDiv.style.display = 'block';
+            else if (action === 'replace') replaceDiv.style.display = 'block';
+            else if (action === 'damaged') damageDiv.style.display = 'block';
+        }
+
+        function filterCustomers() {
+            const zoneId = document.getElementById('zone_filter').value;
+            const options = document.querySelectorAll('#customers_datalist option');
+            options.forEach(opt => {
+                if (!zoneId || opt.getAttribute('data-zone') === zoneId) opt.disabled = false;
+                else opt.disabled = true;
+            });
+            document.getElementById('customer_input').value = ''; 
+        }
+
+        function setCustomerId() {
+            const val = document.getElementById('customer_input').value;
+            const options = document.querySelectorAll('#customers_datalist option');
+            const hiddenInput = document.getElementById('customer_id_hidden');
+            hiddenInput.value = "";
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === val) {
+                    hiddenInput.value = options[i].getAttribute('data-id');
+                    break;
+                }
+            }
+        }
+
+        let html5QrCode;
+        function startScanner() {
+            document.getElementById('scanner-modal').style.display = 'flex';
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCode.start({ facingMode: "environment" }, config, (decodedText, decodedResult) => {
+                document.getElementById('new_qr_id').value = decodedText;
+                stopScanner();
+            }).catch(err => console.log(err));
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-modal').style.display = 'none';
+                }).catch(err => console.log(err));
+            } else {
+                document.getElementById('scanner-modal').style.display = 'none';
+            }
+        }
+
+        toggleFields();
+    </script>
+
+</body>
+</html>

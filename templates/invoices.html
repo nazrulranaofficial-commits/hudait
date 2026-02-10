@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices - ISP Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Invoices</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard_overview') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Invoices</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-file-invoice-dollar me-1"></i>
+            All Invoices
+        </div>
+        <div class="card-body">
+            <p>The full invoices page will be built here.</p>
+            </div>
+    </div>
+</div>
+{% endblock %}

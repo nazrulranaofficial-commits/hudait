@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- 1. Root Variables & Body --- */
+        :root {
+            --color-primary: #5A67D8; /* Vibrant purple-blue */
+            --color-primary-dark: #434190;
+            --color-secondary: #38B2AC; /* Teal */
+            --color-text-dark: #2d3748;
+            --color-text-light: #5a657d;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f8faff;
+            --color-success: #38A169;
+            --color-error: #E53E3E;
+            --color-warning: #D97706; /* Amber */
+            --color-warning-bg: #FFFBEB;
+        }
+
+        *, *:before, *:after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--color-bg-light); /* Use theme background */
+            padding: 20px;
+        }
+
+        /* --- 2. Login Layout --- */
+        .login-container {
+            width: 100%;
+            max-width: 900px; /* Wider for a more professional feel */
+        }
+        
+        .auth-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            width: 100%;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(90, 103, 216, 0.15);
+            overflow: hidden;
+        }
+
+        /* --- 3. Instruction Panel (Left) --- */
+        .instruction-panel {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+            padding: 40px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .instruction-panel h2 {
+            color: white;
+            margin-top: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            line-height: 1.3;
+        }
+        .instruction-panel p {
+            font-size: 1rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        .instruction-panel ul {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 20px;
+        }
+        .instruction-panel li {
+            margin-bottom: 20px;
+            font-size: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .instruction-panel li i {
+            margin-right: 12px;
+            margin-top: 4px;
+            width: 16px;
+        }
+
+        /* --- 4. Form Content (Right) --- */
+        .form-content {
+            padding: 40px;
+            position: relative;
+        }
+
+        .dev-logo {
+            max-height: 80px;
+            width: auto;
+            display: block;
+            margin: 0 auto 25px auto; /* Centered */
+        }
+        
+        .form-content h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--color-text-dark);
+        }
+
+        /* --- 5. Form Elements --- */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--color-text-light);
+        }
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            box-sizing: border-box; 
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group input[type="password"]:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.2);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: var(--color-primary);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .login-btn:hover {
+            background: var(--color-primary-dark);
+            box-shadow: 0 4px 15px rgba(90, 103, 216, 0.3);
+        }
+        
+        .links {
+            margin-top: 20px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .links a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: var(--color-text-light);
+            margin-bottom: 20px;
+        }
+        .remember-me label {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .remember-me input {
+            margin-right: 8px;
+            accent-color: var(--color-primary);
+        }
+        
+        /* --- 6. Secondary Buttons --- */
+        .secondary-divider {
+            margin-top: 25px;
+            margin-bottom: 20px;
+            border: 0;
+            border-top: 1px solid var(--color-border);
+        }
+        .secondary-actions {
+            text-align: center;
+        }
+        .secondary-actions p {
+            font-size: 14px;
+            color: var(--color-text-light);
+            margin-bottom: 10px;
+        }
+        .btn-secondary {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        .btn-outline-success {
+            border: 2px solid var(--color-success);
+            color: var(--color-success);
+            background-color: transparent;
+        }
+        .btn-outline-success:hover {
+            background-color: var(--color-success);
+            color: white;
+        }
+        .btn-outline-info {
+            border: 2px solid var(--color-secondary);
+            color: var(--color-secondary);
+            background-color: transparent;
+        }
+        .btn-outline-info:hover {
+            background-color: var(--color-secondary);
+            color: white;
+        }
+        .btn-outline-primary {
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            background-color: transparent;
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--color-primary);
+            color: white;
+        }
+        .btn-secondary:last-child {
+            margin-bottom: 0;
+        }
+
+        /* --- 7. Company Footer --- */
+        .company-footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--color-text-light);
+            font-size: 14px;
+        }
+        .company-footer p {
+            margin: 5px 0;
+        }
+        .company-footer strong {
+            color: var(--color-text-dark);
+        }
+
+        /* --- 8. Flash Messages --- */
+        .flash-messages { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0 0 20px 0; 
+        }
+        .flash-messages li { 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 12px; 
+            text-align: left; 
+            font-size: 15px; 
+            font-weight: 600;
+            border-left-width: 5px;
+            border-left-style: solid;
+        }
+        .flash-messages .error { 
+            background-color: #FFF5F5; 
+            color: #C53030;
+            border-color: var(--color-error); 
+        }
+        .flash-messages .info,
+        .flash-messages .success { 
+            background-color: #F0FFF4; 
+            color: #2F855A;
+            border-color: var(--color-success); 
+        }
+        
+        /* --- 9. Important Notice Style --- */
+        .saas-notice {
+            background-color: var(--color-warning-bg);
+            border: 1px solid var(--color-warning);
+            color: var(--color-warning);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: flex-start;
+            font-weight: 500;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .saas-notice i {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            margin-top: 3px;
+        }
+        .saas-notice-content {
+            white-space: pre-wrap;
+            color: #B45309;
+        }
+        
+        /* --- *** 10. NEW: Featured Clients *** --- */
+        .featured-clients {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding-top: 15px;
+            border-top: 1px solid var(--color-border); /* Add separator */
+            margin-top: 25px; /* Add space */
+        }
+        .avatar-stack {
+            display: flex;
+            flex-direction: row;
+        }
+        .avatar-stack .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid white;
+            margin-left: -15px;
+            object-fit: cover;
+            background-color: var(--color-bg-light);
+        }
+        .avatar-stack .avatar:first-child {
+            margin-left: 0;
+        }
+        .featured-clients-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text-light);
+        }
+        /* --- *** END NEW *** --- */
+
+        /* --- 11. Mobile Responsive Fix --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px 0;
+                align-items: flex-start;
+            }
+            .login-container {
+                max-width: 100%;
+                padding: 0 10px;
+            }
+            .auth-grid {
+                grid-template-columns: 1fr;
+                max-width: 450px;
+                margin: 0 auto;
+                box-shadow: 0 5px 20px rgba(90, 103, 216, 0.1);
+            }
+            
+            .instruction-panel {
+                order: 2;
+                border-radius: 0 0 12px 12px;
+                padding: 30px 20px;
+            }
+            .form-content {
+                order: 1;
+                padding: 30px 20px 20px 20px;
+            }
+        }
+
+    </style>
+</head>
+<body class="login-page-body">
+    
+    <div class="login-container">
+        
+        {% if saas_notice %}
+        <div class="saas-notice">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="saas-notice-content">{{ saas_notice }}</div>
+        </div>
+        {% endif %}
+
+        <div class="auth-grid">
+            
+            <div class="instruction-panel">
+                <h2>Welcome to the Portal</h2>
+                <p>Access your bills, view payment history, and create support tickets.</p>
+                <ul>
+                    <li><i class="fas fa-lock"></i> <b>Secure Login:</b> Use the credentials you set up during registration.</li>
+                    <li><i class="fas fa-file-invoice"></i> <b>Requirement:</b> You must first be registered in our ISP system by an administrator.</li>
+                    <li><i class="fas fa-user-plus"></i><b>New User:</b> If you haven't set a password, use the Sign Up link.</li>
+                </ul>
+            </div>
+
+            <div class="form-content">
+                {% if developer_logo %}
+                    <img src="{{ developer_logo }}" alt="Logo" class="dev-logo">
+                {% endif %}
+
+                <h1 style="font-size: 24px; margin-bottom: 20px;">Customer & Staff Portal</h1>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <ul class="flash-messages">
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="form-group">
+                        <label for="username">Email or Phone:</label>
+                        <input type="text" id="username" name="username" value="{{ last_email or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="remember-me">
+                        <label>
+                            <input type="checkbox" id="remember" name="remember" value="yes" {% if last_email %}checked{% endif %}>
+                            Remember Email
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="login-btn">Log In</button>
+                </form>
+                
+                <div class="links" style="clear: both; overflow: hidden; padding-top: 20px;">
+                    <a href="{{ url_for('reset_password') }}" style="float: left;">Forgot Password?</a>
+                    <a href="{{ url_for('signup') }}" style="float: right;">Don't have an account?</a>
+                </div>
+                <div style="margin-top: 20px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">Need to check an ID?</p>
+    <a href="{{ url_for('verify_manual') }}" 
+       style="display: inline-block; text-decoration: none; color: #0056D2; font-weight: 600; font-size: 0.95rem;">
+       <i class="fas fa-id-badge"></i> Verify Employee
+    </a>
+</div>
+
+                <hr class="secondary-divider">
+
+                <div class="secondary-actions">
+                    <p>New to our service?</p>
+                    <a href="{{ url_for('purchase_plans') }}" class="btn-secondary btn-outline-success">
+                        Buy ISP Software
+                    </a>
+                    <a href="{{ url_for('shop') }}" class="btn-secondary btn-outline-primary">
+                        Buy Accessories
+                    </a>
+                    <a href="{{ url_for('contact_us') }}" class="btn-secondary btn-outline-info">
+                        Contact Us
+                    </a>
+                </div>
+
+                {% if featured_clients %}
+                <div class="featured-clients">
+                    <div class="avatar-stack">
+                        {% for client in featured_clients[:4] %} <img src="{{ client.logo_url }}" alt="{{ client.name }}" class="avatar" title="{{ client.name }}">
+                        {% endfor %}
+                    </div>
+                    <span class="featured-clients-text">
+                        Trusted by top local providers
+                    </span>
+                </div>
+                {% endif %}
+                </div>
+        </div>
+
+        <footer class="company-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+
+    </div>
+</body>
+</html>

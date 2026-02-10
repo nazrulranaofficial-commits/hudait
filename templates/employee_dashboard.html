@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Dashboard{% endblock %}
+
+{% block content %}
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<style>
+    /* --- Global & Layout --- */
+    body { background-color: #f4f6f9; }
+    
+    .page-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 30px 20px;
+    }
+
+    .page-header { margin-bottom: 30px; }
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    .page-subtitle { color: #64748b; font-size: 16px; margin: 0; }
+
+    /* --- ADVERTISEMENT SLIDER --- */
+    .promo-slider-container {
+        margin-bottom: 35px;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        background: #fff;
+        position: relative; 
+        transition: opacity 0.3s ease;
+    }
+
+    /* Close Button Styling */
+    .promo-close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        z-index: 20;
+        background-color: rgba(0, 0, 0, 0.4);
+        color: white;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.2s;
+        backdrop-filter: blur(4px);
+    }
+    
+    .promo-close-btn:hover {
+        background-color: rgba(220, 38, 38, 0.9);
+        transform: scale(1.1);
+    }
+
+    .swiper {
+        width: 100%;
+        height: 320px;
+    }
+
+    .swiper-slide {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #000;
+        overflow: hidden;
+    }
+
+    .swiper-slide img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.9;
+        transition: opacity 0.3s;
+    }
+
+    .swiper-slide:hover img {
+        opacity: 1;
+    }
+
+    .swiper-pagination-bullet {
+        background: rgba(255, 255, 255, 0.7);
+        opacity: 1;
+    }
+    .swiper-pagination-bullet-active {
+        background: #fff;
+        width: 20px;
+        border-radius: 4px;
+    }
+
+    /* --- Dashboard Grid --- */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+    }
+
+    /* --- Cards --- */
+    .dashboard-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 25px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 240px;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+    .card-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        transition: transform 0.2s;
+    }
+    .dashboard-card:hover .card-icon { transform: scale(1.05); }
+
+    /* Icon Color Schemes */
+    .theme-rating { background: #fffbeb; color: #f59e0b; }
+    .theme-speed { background: #f3e8ff; color: #9333ea; }
+    .theme-billing { background: #ecfdf5; color: #059669; }
+    .theme-inventory { background: #eef2ff; color: #4f46e5; }
+    .theme-appoint { background: #eff6ff; color: #2563eb; }
+    .theme-ticket { background: #fef2f2; color: #dc2626; }
+    .theme-payslip { background: #f0fdf4; color: #16a34a; }
+    .theme-expense { background: #fff7ed; color: #ea580c; }
+
+    .card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .card-desc {
+        font-size: 14px;
+        color: #64748b;
+        line-height: 1.5;
+        margin-bottom: 20px;
+    }
+
+    /* Stats Typography */
+    .stat-highlight {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .stat-sub { color: #64748b; font-weight: 400; font-size: 14px; }
+
+    /* --- Stars --- */
+    .rating-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .star-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1;
+    }
+    .stars { color: #e2e8f0; font-size: 18px; letter-spacing: 1px; }
+    .stars .filled { color: #f59e0b; }
+
+    /* --- Buttons --- */
+    .btn-card {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        margin-top: auto;
+    }
+    
+    .btn-speed { background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
+    .btn-speed:hover { background: #d8b4fe; color: #581c87; }
+
+    .btn-billing { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
+    .btn-billing:hover { background: #6ee7b7; color: #064e3b; }
+
+    .btn-inventory { background: #eef2ff; color: #4338ca; border: 1px solid #a5b4fc; }
+    .btn-inventory:hover { background: #a5b4fc; color: #312e81; }
+
+    .btn-appoint { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+    .btn-appoint:hover { background: #93c5fd; color: #1e3a8a; }
+
+    .btn-ticket { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .btn-ticket:hover { background: #fca5a5; color: #7f1d1d; }
+
+    .btn-payslip { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+    .btn-payslip:hover { background: #86efac; color: #14532d; }
+
+    .btn-expense { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+    .btn-expense:hover { background: #fdba74; color: #7c2d12; }
+
+    /* --- PWA Install Button Styles --- */
+    .install-wrapper {
+        display: none; 
+        position: fixed; bottom: 30px; left: 30px; z-index: 9999;
+        align-items: center; gap: 10px;
+    }
+    
+    .install-btn {
+        background: #007bff; color: white; border: none; padding: 12px 20px; 
+        border-radius: 50px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+        cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 15px;
+        transition: transform 0.2s;
+    }
+    .install-btn:hover { transform: scale(1.05); }
+
+    .install-close {
+        background: rgba(0,0,0,0.6); color: white; border: none; 
+        width: 32px; height: 32px; border-radius: 50%; 
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .install-close:hover { background: rgba(0,0,0,0.8); }
+
+    @media (max-width: 768px) {
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .page-header { text-align: center; }
+        .swiper { height: 200px; }
+        /* Center Install Button on mobile */
+        .install-wrapper { left: 50%; transform: translateX(-50%); bottom: 20px; }
+    }
+</style>
+
+<div class="page-container">
+    
+    <div class="page-header">
+        <h1 class="page-title">Employee Dashboard</h1>
+        <p class="page-subtitle">Welcome back, {{ session.user.employee_name }}! Here's your overview.</p>
+    </div>
+
+    {% if portal_ads %}
+    <div class="promo-slider-container" id="adsContainer">
+        <button class="promo-close-btn" onclick="closeAds()" title="Close Advertisement">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="swiper mySwiper">
+            <div class="swiper-wrapper">
+                {% for ad in portal_ads %}
+                <div class="swiper-slide">
+                    {% if ad.redirect_url %}
+                        <a href="{{ url_for('track_ad_click', ad_id=ad.id) }}" target="_blank" style="display:block; width:100%; height:100%;">
+                            <img src="{{ ad.image_url }}" alt="Advertisement">
+                        </a>
+                    {% else %}
+                        <img src="{{ ad.image_url }}" alt="Advertisement">
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="swiper-pagination"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="dashboard-grid">
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <div>
+                        <span class="card-title">My Performance</span>
+                        <span class="stat-sub">{{ review_count }} Reviews</span>
+                    </div>
+                    <div class="card-icon theme-rating"><i class="fas fa-trophy"></i></div>
+                </div>
+                
+                <div class="rating-wrapper" style="margin-bottom: 20px;">
+                    <span class="star-value">{{ avg_rating }}</span>
+                    <div class="stars">
+                        {% for i in range(1, 6) %}
+                            <span class="{% if i <= avg_rating|round %}filled{% endif %}">★</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                    
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Solved</div>
+                        <div style="font-size: 20px; font-weight: 800; color: #059669; display: flex; align-items: center; gap: 6px;">
+                            {{ resolved }}
+                            <i class="fas fa-check-circle" style="font-size: 14px; opacity: 0.6;"></i>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Avg Speed</div>
+                        <div style="font-size: 20px; font-weight: 800; color: #2563eb; display: flex; align-items: center; gap: 6px;">
+                            {{ avg_resolution_time }}
+                            <i class="fas fa-stopwatch" style="font-size: 14px; opacity: 0.6;"></i>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">Diagnostics</span>
+                    <div class="card-icon theme-speed"><i class="fas fa-tachometer-alt"></i></div>
+                </div>
+                <p class="card-desc">Run a network speed test to verify connectivity and bandwidth issues.</p>
+            </div>
+            <a href="{{ url_for('speed_test_page') }}" class="btn-card btn-speed">Run Speed Test</a>
+        </div>
+
+        {% if session.user.role == 'Admin' or session.user.permissions.can_manage_billing %}
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">Collect Payment</span>
+                    <div class="card-icon theme-billing"><i class="fas fa-wallet"></i></div>
+                </div>
+                <p class="card-desc">View unpaid invoices and collect cash payments from customers in person.</p>
+            </div>
+            <a href="{{ url_for('employee_billing') }}" class="btn-card btn-billing">Go to Billing</a>
+        </div>
+        {% endif %}
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">Inventory Scan</span>
+                    <div class="card-icon theme-inventory"><i class="fas fa-qrcode"></i></div>
+                </div>
+                <p class="card-desc">Scan QR codes to assign routers/devices or update stock status.</p>
+            </div>
+            <a href="{{ url_for('employee_scan_qr') }}" class="btn-card btn-inventory">Open Scanner</a>
+        </div>
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">Appointments</span>
+                    <div class="card-icon theme-appoint"><i class="fas fa-calendar-check"></i></div>
+                </div>
+                <div class="rating-wrapper" style="margin-bottom: 5px;">
+                    <span class="star-value">{{ upcoming_appointments }}</span>
+                </div>
+                <p class="card-desc">Scheduled visits for today.</p>
+            </div>
+            <a href="{{ url_for('my_appointments') }}" class="btn-card btn-appoint">View Schedule</a>
+        </div>
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">My Tickets</span>
+                    <div class="card-icon theme-ticket"><i class="fas fa-ticket-alt"></i></div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <span class="stat-highlight">{{ pending }}</span> <span class="stat-sub">Pending</span>
+                    <span style="margin: 0 8px; color: #cbd5e1;">|</span>
+                    <span class="stat-highlight">{{ total_assigned }}</span> <span class="stat-sub">Total</span>
+                </div>
+                <p class="card-desc">Manage support requests assigned to you.</p>
+            </div>
+            <a href="{{ url_for('employee_my_tickets') }}" class="btn-card btn-ticket">View Tickets</a>
+        </div>
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">My Payslips</span>
+                    <div class="card-icon theme-payslip"><i class="fas fa-file-invoice-dollar"></i></div>
+                </div>
+                <p class="card-desc">View monthly salary statements and download PDF copies.</p>
+            </div>
+            <a href="{{ url_for('employee_payslips') }}" class="btn-card btn-payslip">View History</a>
+        </div>
+
+        <div class="dashboard-card">
+            <div>
+                <div class="card-top">
+                    <span class="card-title">Expenses</span>
+                    <div class="card-icon theme-expense"><i class="fas fa-receipt"></i></div>
+                </div>
+                <p class="card-desc">Submit reimbursement requests for fuel, hardware, or travel.</p>
+            </div>
+            <a href="{{ url_for('employee_expenses') }}" class="btn-card btn-expense">Manage Expenses</a>
+        </div>
+
+    </div>
+</div>
+
+<div id="installAppContainer" class="install-wrapper">
+    <button class="install-btn" onclick="installPWA()">
+        <i class="fas fa-download"></i> Install App
+    </button>
+    <button class="install-close" onclick="closeInstallPrompt()" title="Dismiss">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+
+<div id="iosInstallModal" style="display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 20px; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 10000; text-align: center;">
+    <p style="font-weight: bold; font-size: 16px; margin-bottom: 10px;">Install for iPhone/iPad</p>
+    <p style="color: #666; margin-bottom: 15px;">Tap <img src="https://img.icons8.com/ios-glyphs/30/007bff/share-rounded.png" style="vertical-align: middle; width: 20px;"> <strong>Share</strong> and then <br> <i class="far fa-plus-square"></i> <strong>Add to Home Screen</strong>.</p>
+    <button onclick="document.getElementById('iosInstallModal').style.display='none'" style="background: #eee; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold;">Close</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<script>
+  // 1. Swiper Init
+  var swiper = new Swiper(".mySwiper", {
+    spaceBetween: 30,
+    centeredSlides: true,
+    autoplay: {
+      delay: 4000, 
+      disableOnInteraction: false,
+    },
+    pagination: {
+      el: ".swiper-pagination",
+      clickable: true,
+    },
+    loop: true,
+  });
+
+  // 2. Logic to Close Ads
+  function closeAds() {
+      var adsDiv = document.getElementById("adsContainer");
+      if(adsDiv) {
+          adsDiv.style.display = "none";
+      }
+  }
+
+  // 3. PWA Installation Logic
+  let deferredPrompt;
+  const installContainer = document.getElementById('installAppContainer');
+  const iosModal = document.getElementById('iosInstallModal');
+
+  // Detect Android/Desktop
+  window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installContainer.style.display = 'flex';
+  });
+
+  // Detect iOS
+  const isIos = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      return /iphone|ipad|ipod/.test(userAgent);
+  }
+  const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+  if (isIos() && !isInStandaloneMode()) {
+      installContainer.style.display = 'flex';
+      installContainer.querySelector('.install-btn').setAttribute('onclick', "showIosInstructions()");
+  }
+
+  function installPWA() {
+      installContainer.style.display = 'none';
+      if(deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+              deferredPrompt = null;
+          });
+      }
+  }
+
+  function showIosInstructions() {
+      iosModal.style.display = 'block';
+  }
+
+  function closeInstallPrompt() {
+      installContainer.style.display = 'none';
+  }
+
+  // 4. Register Service Worker (REQUIRED for Android/Windows Install)
+  // CRITICAL: Must use "/sw.js" (root path), NOT static path.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register("/sw.js")
+        .then((reg) => {
+          console.log('Service Worker Registered with Root Scope:', reg);
+        });
+    });
+  }
+
+</script>
+{% endblock %}

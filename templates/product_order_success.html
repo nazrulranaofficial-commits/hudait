@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You for Your Order! - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-primary: #5A67D8;
+            --color-primary-dark: #434190;
+            --color-success: #38A169;
+            --color-text-dark: #1a202c;
+            --color-text-light: #5a657d;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f8faff;
+            --color-shadow: rgba(90, 103, 216, 0.1);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--color-bg-light);
+            color: var(--color-text-light);
+        }
+        .container {
+            width: 100%;
+            max-width: 800px; /* Centered, narrower container */
+            margin: 0 auto;
+            padding: 0 1rem;
+            box-sizing: border-box; /* ADDED */
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px var(--color-shadow);
+            overflow: hidden;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            box-sizing: border-box; /* ADDED */
+        }
+        
+        /* --- 1. Header --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1rem;
+            margin: 0 -1rem 1.5rem -1rem;
+            border-bottom: 1px solid var(--color-border);
+            background-color: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .logo {
+            max-height: 50px;
+            width: auto;
+        }
+        .logo-link-desktop {
+            display: block;
+        }
+        .logo-link-mobile {
+            display: none;
+        }
+        .mobile-menu-toggle {
+            display: none;
+            font-size: 1.5rem;
+            color: var(--color-text-dark);
+            cursor: pointer;
+        }
+        .nav-links-desktop {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .nav-links-desktop a {
+            color: var(--color-text-dark);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .nav-links-desktop a:hover {
+            color: var(--color-primary);
+        }
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+        .btn-primary:hover {
+            background-color: var(--color-primary-dark);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--color-primary);
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid var(--color-primary);
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        /* --- 2. Mobile Menu Overlay & Sidebar --- */
+        .mobile-menu-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+        }
+        .mobile-menu-overlay.mobile-active {
+            display: block;
+            opacity: 1;
+        }
+        .mobile-sidebar-nav {
+            display: none;
+            position: fixed;
+            left: -320px;
+            top: 0;
+            bottom: 0;
+            width: 300px;
+            z-index: 1000;
+            background-color: #ffffff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            overflow-y: auto;
+            transition: left 0.3s ease-in-out;
+            padding: 1.5rem;
+        }
+        .mobile-sidebar-nav.mobile-active {
+            display: block;
+            left: 0;
+        }
+        .mobile-sidebar-nav h3 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            color: var(--color-text-dark);
+        }
+        .mobile-nav-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .mobile-nav-links li {
+            border-bottom: 1px solid var(--color-border);
+        }
+        .mobile-nav-links li a {
+            display: block;
+            padding: 1rem 0.5rem;
+            text-decoration: none;
+            color: var(--color-text-dark);
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        .mobile-nav-links li a.btn-secondary {
+            text-align: center;
+            margin-top: 1rem;
+            background-color: var(--color-bg-light);
+        }
+        
+        /* --- ADDED: Category List Styles --- */
+        .category-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .category-list li a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: var(--color-text-light);
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .category-list li a:hover {
+            background-color: var(--color-bg-light);
+            color: var(--color-primary);
+        }
+        .category-list li a.active {
+            background-color: #eef2ff;
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        /* --- 3. Thank You Content --- */
+        .success-icon {
+            font-size: 4rem;
+            color: var(--color-success);
+            line-height: 1;
+            margin-bottom: 1.5rem;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-text-dark);
+            margin: 0 0 1rem 0;
+        }
+        
+        .order-number {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            background: var(--color-bg-light);
+            padding: 8px 15px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        .summary {
+            text-align: left;
+            margin-top: 2rem;
+            border-top: 1px solid var(--color-border);
+            padding-top: 2rem;
+        }
+        .summary h3 {
+            font-size: 1.25rem;
+            margin-top: 0;
+        }
+        .summary p {
+            line-height: 1.7;
+            font-size: 1rem;
+        }
+
+        /* --- 4. Footer --- */
+        .company-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 30px 1rem;
+            border-top: 1px solid var(--color-border);
+            color: var(--color-text-light);
+            font-size: 14px;
+        }
+        .company-footer p { margin: 5px 0; }
+        .company-footer strong { color: var(--color-text-dark); }
+        
+        /* 5. Flash Messages */
+        .flash-messages { 
+            /* MODIFIED: Matched other pages */
+            list-style: none; padding: 0 1rem; margin-bottom: 1.5rem;
+        }
+        .flash-messages li.success { 
+            padding: 15px; border-radius: 8px; margin-bottom: 12px; 
+            text-align: left; font-size: 1rem; font-weight: 600;
+            border-left-width: 5px;
+            border-left-style: solid;
+            background-color: #F0FFF4; color: #2F855A; border-color: var(--color-success); 
+        }
+        
+        /* --- 6. Mobile Fixes --- */
+        @media (max-width: 992px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+            .nav-links-desktop {
+                display: none;
+            }
+            .logo-link-desktop {
+                display: none;
+            }
+            .logo-link-mobile {
+                display: block;
+            }
+            .btn-primary .cart-text {
+                display: none;
+            }
+            .btn-primary {
+                padding: 10px 12px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container { margin: 0 auto; padding: 0; }
+            .header {
+                padding: 1rem;
+                margin-bottom: 1rem;
+                margin-left: 0; /* ADDED */
+                margin-right: 0; /* ADDED */
+            }
+            .logo { max-height: 45px; }
+            
+            /* MODIFIED: This is the key style from other pages */
+            .card {
+                padding: 1.5rem;
+                margin: 0 1rem 1.5rem 1rem;
+                border-radius: 0;
+            }
+            .card:last-child {
+                margin-bottom: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMenu()"></div>
+    <aside class="mobile-sidebar-nav" id="mobile-sidebar-nav">
+        <h3 style="border-bottom: 1px solid var(--color-border); padding-bottom: 1rem;">Menu</h3>
+        <ul class="mobile-nav-links">
+            <li><a href="{{ url_for('purchase_plans') }}">SaaS Plans</a></li>
+            <li><a href="{{ url_for('shop') }}">Products</a></li>
+            <li><a href="{{ url_for('contact_us') }}">Contact</a></li>
+            <li>
+                <a href="{{ url_for('product_track') }}" class="btn-secondary">
+                    <i class="fas fa-box" style="margin-right: 8px;"></i>
+                    Track Product
+                </a>
+            </li>
+        </ul>
+
+        <h3 style="margin-top: 2rem;">Shop for</h3>
+        <ul class="category-list">
+            <li>
+                <a href="{{ url_for('shop') }}" class="{{ 'active' if not category_filter_id else '' }}">
+                    All Categories
+                </a>
+            </li>
+            {% for category in categories %}
+            <li>
+                <a href="{{ url_for('shop', category=category.id) }}">
+                    {{ category.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </aside>
+    
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <div class="mobile-menu-toggle" onclick="toggleMenu()">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <a href="{{ url_for('purchase_plans') }}" class="logo-link-desktop">
+                    <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="{{ app_name }} Logo" class="logo">
+                </a>
+            </div>
+            
+            <a href="{{ url_for('purchase_plans') }}" class="logo-link-mobile">
+                <img src="{{ logo_url or 'https://via.placeholder.com/200x60.png?text=' + app_name }}" alt="{{ app_name }} Logo" class="logo">
+            </a>
+
+            <nav class="nav-links-desktop">
+                <a href="{{ url_for('purchase_plans') }}">SaaS Plans</a>
+                <a href="{{ url_for('shop') }}">Products</a>
+                <a href="{{ url_for('contact_us') }}">Contact</a>
+                <a href="{{ url_for('product_track') }}" class="btn-secondary">
+                    <i class="fas fa-box" style="margin-right: 8px;"></i>
+                    Track Product
+                </a>
+            </nav>
+            
+            <a href="{{ url_for('cart') }}" class="btn-primary">
+                <i class="fas fa-shopping-cart" style="margin-right: 8px;"></i>
+                <span class="cart-text">Cart ({{ cart_item_count }})</span>
+            </a>
+        </header>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            
+            <h1>Thank You for Your Order!</h1>
+            
+            {% if order %}
+                <p>Your order has been placed and is now being processed.</p>
+                <span class="order-number">{{ order.order_number }}</span>
+
+                <div class="summary">
+                    <h3>Order Summary</h3>
+                    <p>
+                        <strong>Status:</strong> {{ order.status }}<br>
+                        <strong>Payment Method:</strong> {{ order.payment_method }}<br>
+                        <strong>Total Paid:</strong> {{ "%.2f"|format(order.total_amount | float) }} BDT<br>
+                        <strong>Shipping To:</strong> {{ order.customer_details.full_name }}, {{ order.customer_details.address }}
+                    </p>
+                    <p style="font-weight: 600; color: var(--color-text-dark);">
+                        Estimated Delivery: 3-5 business days.
+                    </p>
+                </div>
+            {% else %}
+                <p>There was an error retrieving your order details, but your order may have been placed. Please check your email.</p>
+            {% endif %}
+            
+            <a href="{{ url_for('shop') }}" class="btn-primary" style="margin-top: 2rem;">
+                <i class="fas fa-arrow-left" style="margin-right: 8px;"></i>
+                Continue Shopping
+            </a>
+        </div>
+        
+        <footer class="company-footer">
+            <p>Powered by <strong>HUDA IT SOLUTIONS</strong></p>
+            <p>For inquiries, contact: {{ contact_email or 'support@huda-it.com' }}</p>
+        </footer>
+    </div>
+    
+    <script>
+        function toggleMenu() {
+            document.getElementById('mobile-sidebar-nav').classList.toggle('mobile-active');
+            document.getElementById('mobile-menu-overlay').classList.toggle('mobile-active');
+        }
+    </script>
+</body>
+</html>

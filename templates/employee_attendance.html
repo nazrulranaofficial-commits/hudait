@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}My Attendance{% endblock %}
+
+{% block content %}
+
+{% set stats = namespace(present=0, late=0, absent=0, sick=0, on_leave=0) %}
+{% for record in attendance_records %}
+    {% set s = record.status | lower %}
+    {% if 'present' in s %}
+        {% set stats.present = stats.present + 1 %}
+    {% elif 'late' in s %}
+        {% set stats.late = stats.late + 1 %}
+    {% elif 'absent' in s %}
+        {% set stats.absent = stats.absent + 1 %}
+    {% elif 'sick' in s %}
+        {% set stats.sick = stats.sick + 1 %}
+    {% elif 'leave' in s %}
+        {% set stats.on_leave = stats.on_leave + 1 %}
+    {% endif %}
+{% endfor %}
+
+{% set total_records = attendance_records | length %}
+{% if total_records > 0 %}
+    {% set attendance_score = ((stats.present + stats.late) / total_records * 100) | round | int %}
+{% else %}
+    {% set attendance_score = 0 %}
+{% endif %}
+
+<style>
+    /* --- Global Layout --- */
+    body { background-color: #f8fafc; }
+    .page-container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+
+    /* --- 1. Top Summary Card (The "Pro" Look) --- */
+    .summary-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        margin-bottom: 30px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* Header Strip */
+    .summary-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); /* Purple/Indigo Gradient */
+        padding: 20px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+    }
+    .summary-title h2 { margin: 0; font-size: 20px; font-weight: 700; }
+    .summary-title p { margin: 4px 0 0; opacity: 0.9; font-size: 13px; }
+
+    /* Filter Form inside Header */
+    .header-filter {
+        display: flex;
+        gap: 10px;
+    }
+    .header-select {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.4);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .header-select:focus { outline: none; background: rgba(255,255,255,0.3); }
+    .header-select option { color: #1e293b; background: white; }
+    .btn-refresh {
+        background: white; color: #6366f1; border: none;
+        padding: 8px 15px; border-radius: 8px; font-weight: 600; font-size: 13px;
+        cursor: pointer; transition: transform 0.2s;
+    }
+    .btn-refresh:hover { transform: translateY(-1px); }
+
+    /* Stats Grid */
+    .stats-row {
+        display: flex;
+        padding: 25px 30px;
+        gap: 40px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Percentage Circle / Bar */
+    .score-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 120px;
+        border-right: 1px solid #f1f5f9;
+        padding-right: 40px;
+    }
+    .score-circle {
+        position: relative;
+        width: 70px; height: 70px;
+        border-radius: 50%;
+        background: conic-gradient(#8b5cf6 {{ attendance_score }}%, #f1f5f9 0);
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 10px;
+    }
+    .score-inner {
+        width: 60px; height: 60px; background: white; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; color: #1e293b; font-size: 16px;
+    }
+    .score-label { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Count Items */
+    .stat-items {
+        display: flex; gap: 40px; flex: 1; justify-content: space-around;
+    }
+    .stat-item { text-align: center; }
+    .stat-val { font-size: 24px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 4px; }
+    .stat-name { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+    
+    /* Text Colors for stats */
+    .text-green { color: #10b981; }
+    .text-orange { color: #f59e0b; }
+    .text-red { color: #ef4444; }
+    .text-blue { color: #3b82f6; }
+
+    /* --- 2. Table Section --- */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .pro-table { width: 100%; border-collapse: collapse; }
+    .pro-table th {
+        background: #f8fafc;
+        text-align: left;
+        padding: 18px 25px;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 700;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .pro-table td {
+        padding: 18px 25px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .pro-table tr:last-child td { border-bottom: none; }
+    .pro-table tr:hover { background-color: #f8fafc; }
+
+    .date-wrapper { display: flex; flex-direction: column; }
+    .date-day { font-weight: 600; color: #1e293b; }
+    .date-full { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+    /* Status Pills */
+    .status-pill {
+        padding: 6px 14px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; display: block; }
+    
+    .s-present { background: #dcfce7; color: #166534; }
+    .s-present::before { background: #166534; }
+    
+    .s-late { background: #ffedd5; color: #c2410c; }
+    .s-late::before { background: #c2410c; }
+    
+    .s-absent { background: #fee2e2; color: #991b1b; }
+    .s-absent::before { background: #991b1b; }
+    
+    .s-sick { background: #fef3c7; color: #b45309; }
+    .s-sick::before { background: #b45309; }
+
+    /* Notes */
+    .note-text {
+        font-size: 13px; color: #64748b; font-style: italic;
+        background: #f8fafc; padding: 6px 12px; border-radius: 6px;
+        display: inline-block; max-width: 300px;
+    }
+
+    /* --- Mobile --- */
+    .mobile-view { display: none; }
+    @media (max-width: 800px) {
+        .page-container { padding: 15px; }
+        
+        /* Redesign Header for Mobile */
+        .summary-header { flex-direction: column; align-items: flex-start; gap: 15px; padding: 20px; }
+        .header-filter { width: 100%; }
+        .header-select { flex: 1; }
+        
+        /* Stack Stats */
+        .stats-row { padding: 20px; gap: 20px; }
+        .score-box { border-right: none; border-bottom: 1px solid #f1f5f9; padding-right: 0; padding-bottom: 20px; width: 100%; }
+        .stat-items { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 20px; }
+        
+        /* Hide Desktop Table */
+        .table-container { display: none; }
+        .mobile-view { display: block; margin-top: 20px; }
+        
+        /* Mobile Cards */
+        .mob-card {
+            background: white; border-radius: 12px; padding: 15px;
+            margin-bottom: 12px; border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .mob-left { display: flex; flex-direction: column; gap: 4px; }
+        .mob-date { font-weight: 700; color: #1e293b; font-size: 15px; }
+        .mob-year { font-size: 12px; color: #94a3b8; }
+    }
+</style>
+
+<div class="page-container">
+
+    <div class="summary-card">
+        <form method="POST" action="{{ url_for('employee_attendance') }}">
+            <div class="summary-header">
+                <div class="summary-title">
+                    <h2>Attendance Overview</h2>
+                    <p>Track your monthly performance and logs.</p>
+                </div>
+                <div class="header-filter">
+                    <select name="month" class="header-select">
+                        {% for m in range(1, 13) %}
+                            <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>
+                                {{ date(2000, m, 1).strftime('%B') }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="year" class="header-select">
+                        {% for y in range(2023, 2027) %}
+                            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn-refresh"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+        </form>
+
+        <div class="stats-row">
+            <div class="score-box">
+                <div class="score-circle">
+                    <div class="score-inner">{{ attendance_score }}%</div>
+                </div>
+                <span class="score-label">Attendance Score</span>
+            </div>
+
+            <div class="stat-items">
+                <div class="stat-item">
+                    <span class="stat-val">{{ total_records }}</span>
+                    <span class="stat-name">Total Days</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-val text-green">{{ stats.present }}</span>
+                    <span class="stat-name">Present</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-val text-orange">{{ stats.late }}</span>
+                    <span class="stat-name">Late</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-val text-red">{{ stats.absent }}</span>
+                    <span class="stat-name">Absent</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        {% if attendance_records %}
+        <table class="pro-table">
+            <thead>
+                <tr>
+                    <th width="25%">Date</th>
+                    <th width="20%">Status</th>
+                    <th width="55%">Admin Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in attendance_records %}
+                <tr>
+                    <td>
+                        <div class="date-wrapper">
+                            <span class="date-day">{{ datetime.fromisoformat(record.date).strftime('%d %B') }}</span>
+                            <span class="date-full">{{ datetime.fromisoformat(record.date).strftime('%A, %Y') }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-pill s-{{ record.status | lower | replace(' ', '-') }}">
+                            {{ record.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if record.notes %}
+                            <span class="note-text"><i class="fas fa-comment-alt me-2"></i> {{ record.notes }}</span>
+                        {% else %}
+                            <span style="color:#cbd5e1; font-size:20px;">&bull;</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div style="padding: 50px; text-align: center; color: #94a3b8;">
+                <i class="far fa-calendar-times fa-3x mb-3"></i>
+                <p>No attendance records found for this period.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mobile-view">
+        {% if attendance_records %}
+            {% for record in attendance_records %}
+            <div class="mob-card">
+                <div class="mob-left">
+                    <span class="mob-date">{{ datetime.fromisoformat(record.date).strftime('%d %b') }}</span>
+                    <span class="mob-year">{{ datetime.fromisoformat(record.date).strftime('%A') }}</span>
+                </div>
+                <div class="mob-right">
+                    <span class="status-pill s-{{ record.status | lower | replace(' ', '-') }}">
+                        {{ record.status }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="padding: 40px; text-align: center; color: #94a3b8;">
+                <p>No records found.</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

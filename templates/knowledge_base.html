@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Base{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style>
+    .kb-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .kb-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    .kb-header h1 {
+        font-size: 36px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 10px;
+    }
+    .kb-header p {
+        font-size: 18px;
+        color: #666;
+    }
+    
+    /* Accordion styles */
+    .kb-category {
+        margin-bottom: 20px;
+    }
+    .kb-category-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #0056b3;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .accordion-item {
+        background-color: #fdfdfd;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        overflow: hidden; /* for rounded corners */
+    }
+    .accordion-button {
+        /* --- CHANGED STYLES FOR VISIBILITY --- */
+        background-color: #007bff; /* Solid blue background */
+        color: white; /* White text for contrast */
+        /* --- END OF CHANGES --- */
+        cursor: pointer;
+        padding: 20px 25px;
+        width: 100%;
+        text-align: left;
+        border: none;
+        outline: none;
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.2s;
+    }
+    .accordion-button:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+    }
+    
+    .accordion-button .icon {
+        font-size: 14px;
+        color: white; /* Icon also white for contrast */
+        transition: transform 0.3s ease;
+    }
+    
+    /* Style for when the button is 'active' (clicked) */
+    .accordion-button.active .icon {
+        transform: rotate(180deg);
+    }
+    
+    .accordion-content {
+        padding: 0 25px 20px 25px;
+        background-color: white;
+        display: none; /* Hidden by default */
+        overflow: hidden;
+        border-top: 1px solid #f0f0f0;
+    }
+    .accordion-content p {
+        font-size: 16px;
+        line-height: 1.7;
+        color: #555;
+        white-space: pre-wrap; /* Preserves line breaks from admin app */
+    }
+</style>
+
+<div class="kb-container">
+
+    <div class="kb-header">
+        <h1>Knowledge Base</h1>
+        <p>Find answers to common questions about your service.</p>
+    </div>
+
+    {% if categories %}
+        {% for category, articles in categories.items() %}
+            <div class="kb-category">
+                <h2 class="kb-category-title">{{ category }}</h2>
+                
+                <div class="accordion-container">
+                    {% for article in articles %}
+                        <div class="accordion-item">
+                            <button class="accordion-button">
+                                {{ article.title }}
+                                <i class="fas fa-chevron-down icon"></i>
+                            </button>
+                            <div class="accordion-content">
+                                <p>{{ article.content }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="kb-header">
+            <p>No help articles are available at this time. Please check back later.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var acc = document.getElementsByClassName("accordion-button");
+        for (var i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function() {
+                /* Toggle between adding and removing the "active" class */
+                this.classList.toggle("active");
+
+                /* Toggle between hiding and showing the active panel */
+                var panel = this.nextElementSibling;
+                if (panel.style.display === "block") {
+                    panel.style.display = "none";
+                } else {
+                    panel.style.display = "block";
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock %}
