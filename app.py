@@ -1,3 +1,4 @@
+import threading
 import os
 import hashlib 
 from flask import render_template_string
@@ -3216,21 +3217,44 @@ def employee_view_ticket(ticket_id):
                 if response.data:
                     flash(f'Ticket updated to {new_status}', 'success')
                     
-                    # Send Email
+                    # --- ASYNC EMAIL LOGIC (PREVENTS TIMEOUT) ---
                     if new_status in ['Resolved', 'Closed'] and customer_info.get('email'):
+                        
+                        # 1. Define the background task
+                        def send_ticket_email_async(c_details, c_email, c_name, t_num, t_sub, n_stat, t_id):
+                            try:
+                                print(f"Starting async email for ticket {t_num}...")
+                                email_service.send_ticket_status_update_email(
+                                    customer_email=c_email,
+                                    customer_name=c_name,
+                                    ticket_number=t_num,
+                                    ticket_subject=t_sub,
+                                    new_status=n_stat,
+                                    company_details=c_details,
+                                    ticket_id=t_id 
+                                )
+                                print("Async email sent successfully.")
+                            except Exception as e:
+                                print(f"Async Ticket Email Error: {e}")
+
                         try:
+                            # 2. Prepare data safely
                             company_details = invoice_utils.get_isp_company_details_from_db(user['company_id'])
-                            email_service.send_ticket_status_update_email(
-                                customer_email=customer_info['email'],
-                                customer_name=customer_info['full_name'],
-                                ticket_number=ticket_num,
-                                ticket_subject=current_data.get('subject'),
-                                new_status=new_status,
-                                company_details=company_details,
-                                ticket_id=ticket_id 
-                            )
-                            flash('Customer notified via email.', 'info')
-                        except Exception as e: print(f"Email Error: {e}")
+                            cust_email = customer_info.get('email')
+                            cust_name = customer_info.get('full_name')
+                            subj = current_data.get('subject')
+
+                            # 3. Start the thread
+                            email_thread = threading.Thread(target=send_ticket_email_async, args=(
+                                company_details, cust_email, cust_name, ticket_num, subj, new_status, ticket_id
+                            ))
+                            email_thread.start()
+                            
+                            flash('Customer notification email queued.', 'info')
+                        except Exception as e:
+                            print(f"Failed to start email thread: {e}")
+                    # ---------------------------------------------
+
                 else:
                     flash('Could not update status. Verify assignment.', 'error')
                     
@@ -3555,8 +3579,7 @@ def employee_collect_payment(invoice_id):
                 invoice['transaction_id'] = payload['transaction_id']
                 invoice['received_by_employee_id'] = user['employee_id']
 
-                # --- 4. NEW: SEND ADMIN NOTIFICATION ---
-                # This was missing in the previous code
+                # --- 4. ADMIN NOTIFICATION ---
                 try:
                     send_admin_notification(
                         company_id=user['company_id'],
@@ -3567,54 +3590,65 @@ def employee_collect_payment(invoice_id):
                     )
                 except Exception as e:
                     print(f"Notification Error: {e}")
-                # ---------------------------------------
 
-                # A. Auto-Reactivate Service
-                try:
-                    reactivate_service(invoice['customer_id'])
-                except Exception as e:
-                    print(f"Reactivation Warning: {e}")
-                
-                # B. Email Logic
-                email_sent = False
-                try:
-                    if customer and customer.get('email'):
-                        company_details = invoice_utils.get_isp_company_details_from_db(user['company_id'])
-                        
-                        pdf_gen = invoice_utils.create_thermal_receipt_as_bytes(
-                            invoice,  
-                            customer,  
-                            company_details,  
-                            user['employee_name']  
-                        )
-                        
-                        if pdf_gen[0]: 
-                            pdf_bytes = pdf_gen[1]
-                            pdf_filename = f"receipt_{invoice['invoice_number']}.pdf"
+                # --- 5. ASYNC BACKGROUND TASKS (Reactivation + Email) ---
+                # We move both Reactivation (Router connection) and Email (SMTP connection)
+                # to a background thread to prevent WORKER TIMEOUTs.
+                def background_payment_tasks(inv_data, cust_data, comp_id, emp_name):
+                    # A. Reactivate Service
+                    try:
+                        print(f"Background: Reactivating service for customer {inv_data['customer_id']}...")
+                        reactivate_service(inv_data['customer_id'])
+                    except Exception as e:
+                        print(f"Background Reactivation Error: {e}")
+
+                    # B. Send Email
+                    try:
+                        if cust_data and cust_data.get('email'):
+                            print("Background: Generating receipt and sending email...")
+                            company_details = invoice_utils.get_isp_company_details_from_db(comp_id)
                             
-                            with open(pdf_filename, 'wb') as f:
-                                f.write(pdf_bytes)
-                            
-                            email_service.send_invoice_email(
-                                customer_email=customer['email'],
-                                customer_name=customer['full_name'],
-                                invoice_data=invoice,
-                                company_details=company_details,
-                                pdf_attachment_path=pdf_filename
+                            pdf_gen = invoice_utils.create_thermal_receipt_as_bytes(
+                                inv_data, cust_data, company_details, emp_name
                             )
-                            email_sent = True
                             
-                            if os.path.exists(pdf_filename):
-                                os.remove(pdf_filename)
-                except Exception as e:
-                    print(f"Email Sending Error: {e}")
+                            if pdf_gen[0]: 
+                                pdf_bytes = pdf_gen[1]
+                                pdf_filename = f"receipt_{inv_data['invoice_number']}.pdf"
+                                
+                                # Save temporary file for the email function
+                                with open(pdf_filename, 'wb') as f:
+                                    f.write(pdf_bytes)
+                                
+                                email_service.send_invoice_email(
+                                    customer_email=cust_data['email'],
+                                    customer_name=cust_data['full_name'],
+                                    invoice_data=inv_data,
+                                    company_details=company_details,
+                                    pdf_attachment_path=pdf_filename
+                                )
+                                
+                                # Clean up temp file
+                                if os.path.exists(pdf_filename):
+                                    os.remove(pdf_filename)
+                                print("Background: Email sent successfully.")
+                    except Exception as e:
+                        print(f"Background Email Error: {e}")
 
-                # C. Audit Log & Success
+                # Start the background thread
+                bg_thread = threading.Thread(target=background_payment_tasks, args=(
+                    invoice, customer, user['company_id'], user['employee_name']
+                ))
+                bg_thread.start()
+                # -------------------------------------------------------
+
+                # C. Audit Log
                 log_portal_action("Invoice Paid (Portal)",  
                                 f"Collected payment for Invoice #{invoice['invoice_number']} ({invoice['amount']} BDT). "
                                 f"Method: {payment_method_str}")
                 
-                return render_template('payment_success.html', invoice_id=invoice_id, email_sent=email_sent)
+                # Note: We pass email_sent=True optimistically since it's queued
+                return render_template('payment_success.html', invoice_id=invoice_id, email_sent=True)
                 
             else:
                 flash('Failed to update invoice status.', 'error')
@@ -3663,10 +3697,6 @@ def employee_print_receipt(invoice_id):
             
         pdf_bytes = pdf_bytes_or_error
         
-        # --- REMOVED EMAIL SENDING LOGIC HERE ---
-        # The email was already sent in the 'collect-payment' step.
-        # This route now ONLY returns the file for printing.
-
         # 3. Return the File for Printing
         return send_file(
             BytesIO(pdf_bytes),
@@ -4940,3 +4970,4 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
