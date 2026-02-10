@@ -32,7 +32,15 @@ from datetime import datetime
 
 
 load_dotenv()
-
+import os
+print("--- EMAIL DEBUG INFO ---")
+print(f"Host: {os.environ.get('SMTP_HOST')}")
+print(f"Port: {os.environ.get('SMTP_PORT')}")
+print(f"User: {os.environ.get('SMTP_USER')}")
+# Don't print the full password for security, just check length
+pwd = os.environ.get('SMTP_PASSWORD', '')
+print(f"Password Length: {len(pwd)}") 
+print("------------------------")
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 app.debug = os.environ.get("FLASK_DEBUG") == '1'
@@ -4930,4 +4938,5 @@ def track_visitor():
 
 
 if __name__ == '__main__':
+
     app.run(port=5000)
