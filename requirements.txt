@@ -5,3 +5,4 @@ requests
 Pillow
 Flask-APScheduler
 gunicorn
+reportlab  
