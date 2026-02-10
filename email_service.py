@@ -136,6 +136,13 @@ def _send_email(company_details, to_email, subject, html_body, attachment_path=N
     except:
         smtp_port = 587
 
+    # --- AUTO-CORRECT GMAIL PORT ---
+    # Render blocks port 587. If we see Gmail + 587, force switch to 465.
+    if "smtp.gmail.com" in str(smtp_host) and smtp_port == 587:
+        print("NOTICE: Auto-switching Gmail to Port 465 (SSL) for cloud compatibility.")
+        smtp_port = 465
+    # -------------------------------
+
     # --- Smart sender_name logic ---
     sender_name = company_details.get('sender_name', 
                     company_details.get('app_name', 'ISP Support'))
