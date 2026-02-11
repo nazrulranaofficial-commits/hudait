@@ -19,6 +19,7 @@ import json
 from werkzeug.exceptions import abort
 from PIL import Image 
 import io         
+import sys
 import email_service 
 from database import supabase, get_saas_settings # <-- MODIFIED: Added get_saas_settings
 from functools import wraps
@@ -4292,36 +4293,32 @@ def order_status(order_number):
 @app.route('/product-checkout', methods=['GET', 'POST'])
 def product_checkout():
     """
-    Checkout page logic with ROBUST DATA FETCHING & ORDER PROCESSING.
+    Checkout page logic with ROBUST ADMIN EMAIL FALLBACKS.
     """
     saas_settings = get_saas_settings()
     cart = session.get('cart', {})
     user = session.get('user', {})
     
-    # 1. Validation: Cart Empty
+    # 1. Validation
     if not cart:
         flash("Your cart is empty.", "info")
         return redirect(url_for('cart'))
 
-    # 2. Setup Data Variables
+    # 2. Setup Data
     shipping_cost = float(saas_settings.get('shipping_cost', 0.0))
     subtotal = 0
     cart_products_snapshot = []
     product_ids = list(cart.keys())
     fetched_products = []
     
-    # 3. Robust Data Fetching (Fetch items for calculation)
+    # 3. Data Fetching
     try:
-        # Try RPC first (Bypass RLS)
         res = supabase.rpc('get_products_with_reviews', {'p_search_term': ""}).execute()
         if res.data:
             fetched_products = [p for p in res.data if str(p['id']) in product_ids]
-            
-        # Fallback to Table
         if not fetched_products:
              res_table = supabase.table('products').select('*, category_id').in_('id', product_ids).execute()
-             if res_table.data:
-                 fetched_products = res_table.data
+             if res_table.data: fetched_products = res_table.data
     except Exception as e:
         print(f"Checkout Data Error: {e}")
 
@@ -4329,69 +4326,53 @@ def product_checkout():
         flash("Items unavailable.", "error")
         return redirect(url_for('cart'))
 
-    # 4. Calculate Totals & Snapshot
+    # 4. Calculations
     today_date = date.today().isoformat()
     for product in fetched_products:
-        product_id = str(product['id'])
-        if product_id not in cart: continue
-        quantity = cart[product_id]
+        pid = str(product['id'])
+        if pid not in cart: continue
+        qty = cart[pid]
         
         # Stock Check
-        if product.get('stock_quantity', 0) < quantity:
+        if product.get('stock_quantity', 0) < qty:
             flash(f"Not enough stock for {product.get('name')}.", "error")
             return redirect(url_for('cart'))
 
-        original_price = float(product.get('selling_price', 0))
-        final_price = original_price
-        is_discounted = False
+        op = float(product.get('selling_price', 0))
+        fp = op
+        is_disc = False
         start = product.get('discount_start_date') or '1970-01-01'
         end = product.get('discount_end_date') or '2099-12-31'
         
         if product.get('discount_percent', 0) > 0 and start <= today_date and end >= today_date:
-            final_price = original_price * (1 - (float(product.get('discount_percent', 0)) / 100))
-            is_discounted = True
+            fp = op * (1 - (float(product.get('discount_percent', 0)) / 100))
+            is_disc = True
             
-        item_subtotal = final_price * quantity
-        subtotal += item_subtotal
+        item_sub = fp * qty
+        subtotal += item_sub
         
         cart_products_snapshot.append({
-            "id": product_id,
-            "name": product.get('name'),
-            "image_url": product.get('image_url'),
-            "quantity": quantity,
-            "subtotal": item_subtotal,
-            "original_price": original_price,
-            "final_price_per_item": final_price,
-            "is_discounted": is_discounted,
-            "category_id": product.get('category_id')
+            "id": pid, "name": product.get('name'), "image_url": product.get('image_url'),
+            "quantity": qty, "subtotal": item_sub, "original_price": op,
+            "final_price_per_item": fp, "is_discounted": is_disc, "category_id": product.get('category_id')
         })
     
-    # 5. Promo Logic
+    # 5. Promo
     discount_amount = 0.0
     promo = session.get('promo')
     promo_code_used = None
     if promo:
         promo_code_used = promo['code']
-        if promo['type'] == 'Percentage':
-            discount_amount = subtotal * (promo['value'] / 100)
-        else:
-            discount_amount = promo['value']
+        discount_amount = subtotal * (promo['value'] / 100) if promo['type'] == 'Percentage' else promo['value']
         if discount_amount > subtotal: discount_amount = subtotal
 
     total_price = max(0, subtotal + shipping_cost - discount_amount)
 
-    # --- 6. HANDLE POST REQUEST (ORDER SUBMISSION) ---
+    # --- 6. HANDLE ORDER SUBMISSION ---
     if request.method == 'POST':
         payment_choice = request.form.get('payment_method')
-        
-        street_address = request.form.get('address')
-        division = request.form.get('division')
-        district = request.form.get('district')
-        thana = request.form.get('thana')
-        
-        full_address = f"{street_address}"
-        if thana and district and division:
-            full_address = f"{street_address}, {thana}, {district}, {division}"
+        street = request.form.get('address')
+        full_address = f"{street}, {request.form.get('thana')}, {request.form.get('district')}, {request.form.get('division')}"
         
         form_data = {
             "full_name": request.form.get('full_name'),
@@ -4400,150 +4381,124 @@ def product_checkout():
             "address": full_address
         }
         
-        if not all([form_data['full_name'], form_data['email'], form_data['phone'], street_address]):
-            flash("Please fill out all required fields.", "error")
+        if not all([form_data['full_name'], form_data['email'], form_data['phone'], street]):
+            flash("All fields are required.", "error")
             return redirect(url_for('product_checkout'))
             
         try:
-            # Generate Order Number
             order_num_res = supabase.rpc('generate_new_product_order_number').execute()
-            new_order_number = order_num_res.data if order_num_res.data else f"ORD-{int(datetime.now().timestamp())}"
+            new_order_number = order_num_res.data or f"ORD-{int(datetime.now().timestamp())}"
 
             order_payload = {
-                "order_number": new_order_number,
-                "customer_details": form_data, 
-                "order_items": cart_products_snapshot, 
-                "shipping_cost": shipping_cost,
-                "discount_amount": discount_amount,
-                "promo_code": promo_code_used,
-                "total_amount": total_price,
-                "status": "Pending Payment",
-                "payment_method": "Unknown"
+                "order_number": new_order_number, "customer_details": form_data, 
+                "order_items": cart_products_snapshot, "shipping_cost": shipping_cost,
+                "discount_amount": discount_amount, "promo_code": promo_code_used,
+                "total_amount": total_price, "status": "Pending Payment", "payment_method": "Unknown"
             }
 
             # A) COD Payment
             if payment_choice == 'cod':
                 order_payload['status'] = 'Processing (COD)'
                 order_payload['payment_method'] = 'Cash on Delivery'
+                supabase.table('product_orders').insert(order_payload).execute()
                 
-                order_res = supabase.table('product_orders').insert(order_payload).execute()
-                
-                # --- EMAIL LOGIC (COD) ---
-                
-                # 1. Customer Email
+                # --- EMAIL LOGIC ---
+                # 1. Customer
                 try:
-                    print(f"Sending COD Email to Customer: {form_data['email']}")
-                    success, msg = email_service.send_product_order_confirmation_customer(
-                        saas_settings, 
-                        form_data['email'], 
-                        form_data['full_name'],
-                        new_order_number, 
-                        cart_products_snapshot, 
-                        total_price,
-                        shipping_cost, 
-                        payment_details=None
+                    email_service.send_product_order_confirmation_customer(
+                        saas_settings, form_data['email'], form_data['full_name'],
+                        new_order_number, cart_products_snapshot, total_price,
+                        shipping_cost, payment_details=None
                     )
-                    if not success: print(f"Customer Email Failed: {msg}")
-                except Exception as e:
-                    print(f"CRITICAL EMAIL ERROR (Customer): {e}")
+                except Exception as e: print(f"Customer Email Error: {e}")
                 
-                # 2. Admin Email (Updated Logic)
+                # 2. Admin (FIXED)
                 try:
-                    # Try finding an email in this order: Contact > Brevo Sender > SMTP User
+                    # Priority: Contact Email -> Brevo Sender -> SMTP User -> Env Var
                     admin_email = (saas_settings.get('contact_email') or 
                                    saas_settings.get('brevo_sender_email') or 
-                                   saas_settings.get('smtp_user'))
+                                   saas_settings.get('smtp_user') or
+                                   os.environ.get('SENDER_EMAIL'))
                     
                     if admin_email:
-                        print(f"Sending Admin Notification to: {admin_email}")
-                        admin_body = render_template('product_order_admin_email.html',
-                                                      form_data=form_data,
-                                                      order_items=cart_products_snapshot,
-                                                      total_amount=total_price,
-                                                      shipping_cost=shipping_cost,
-                                                      order_number=new_order_number,
-                                                      payment_details=None)
+                        print(f"Sending Admin Order Notification to: {admin_email}")
+                        try:
+                            # Try rendering the HTML template
+                            admin_body = render_template('product_order_admin_email.html',
+                                form_data=form_data, order_items=cart_products_snapshot,
+                                total_amount=total_price, shipping_cost=shipping_cost,
+                                order_number=new_order_number, payment_details=None)
+                        except Exception as tpl_e:
+                            print(f"Template missing/error ({tpl_e}), using fallback text.")
+                            # Fallback if template file is missing
+                            admin_body = f"""
+                            <h3>New COD Order: {new_order_number}</h3>
+                            <p><b>Customer:</b> {form_data['full_name']} ({form_data['phone']})</p>
+                            <p><b>Total:</b> {total_price} BDT</p>
+                            <p>Please check the admin panel for details.</p>
+                            """
+                        
                         email_service.send_generic_email(
                             saas_settings, admin_email,
-                            f"New COD Product Order: {new_order_number}",
+                            f"New Order Received: {new_order_number}",
                             admin_body
                         )
+                        print("Admin email queued successfully.")
                     else:
-                        print("Admin Email Skipped: No contact_email, brevo_sender_email, or smtp_user found in settings.")
+                        print("CRITICAL: No Admin Email found in settings or env vars.")
+                        
+                    sys.stdout.flush() # Force log output
                 except Exception as e: 
-                    print(f"Admin Email Error: {e}")
+                    print(f"Admin Email System Error: {e}")
+                    sys.stdout.flush()
 
                 session.pop('cart', None); session.pop('promo', None)
-                flash("Your order has been placed successfully!", "success")
+                flash("Order placed successfully!", "success")
                 return redirect(url_for('product_order_success', order_number=new_order_number))
 
             # B) Online Payment
             elif payment_choice == 'pay_now':
                 if not saas_settings.get('gateway_enabled', False):
-                    flash("Online payments are disabled.", "error")
-                    return redirect(url_for('product_checkout'))
+                    flash("Online payments disabled.", "error"); return redirect(url_for('product_checkout'))
                 
-                shurjopay = initialize_shurjopay(
-                    saas_settings,
-                    return_url=url_for('product_payment_return', _external=True),
-                    cancel_url=url_for('product_payment_cancel', _external=True)
-                )
+                shurjopay = initialize_shurjopay(saas_settings, return_url=url_for('product_payment_return', _external=True), cancel_url=url_for('product_payment_cancel', _external=True))
+                pp_obj = SimpleNamespace(amount=total_price, order_id=new_order_number, 
+                    customer_name=form_data['full_name'], customer_phone=form_data['phone'],
+                    customer_email=form_data['email'], customer_city="Dhaka", 
+                    customer_address=form_data['address'], currency="BDT", customer_post_code="1200")
+                response = shurjopay.make_payment(pp_obj)
                 
-                payment_payload_dict = {
-                    "amount": total_price, "order_id": new_order_number, 
-                    "customer_name": form_data['full_name'], "customer_phone": form_data['phone'],
-                    "customer_email": form_data['email'], "customer_city": "Dhaka", 
-                    "customer_address": form_data['address'], "currency": "BDT", "customer_post_code": "1200"
-                }
-                payment_payload_obj = SimpleNamespace(**payment_payload_dict)
-                response = shurjopay.make_payment(payment_payload_obj)
-                
-                if hasattr(response, 'checkout_url') and response.checkout_url:
+                if hasattr(response, 'checkout_url'):
                     order_payload['checkout_url'] = response.checkout_url
                     order_payload['gateway_tx_id'] = response.sp_order_id
-                    
-                    order_res = supabase.table('product_orders').insert(order_payload).execute()
-                    if order_res.data:
-                        session['pending_order_id'] = order_res.data[0]['id']
-                        return redirect(response.checkout_url)
+                    res = supabase.table('product_orders').insert(order_payload).execute()
+                    if res.data: session['pending_order_id'] = res.data[0]['id']
+                    return redirect(response.checkout_url)
                 
-                flash("Payment gateway error. Try COD.", "error")
-                return redirect(url_for('product_checkout'))
+                flash("Gateway error.", "error"); return redirect(url_for('product_checkout'))
             
             else:
-                flash("Invalid payment method.", "error")
-                return redirect(url_for('product_checkout'))
+                flash("Invalid payment method.", "error"); return redirect(url_for('product_checkout'))
 
         except Exception as e:
-            print(f"ORDER ERROR: {e}")
-            flash(f"Order failed: {e}", "error")
+            print(f"Order Error: {e}"); flash(f"Order failed: {e}", "error")
             return redirect(url_for('product_checkout'))
 
-    # --- 7. RENDER CHECKOUT PAGE (GET REQUEST) ---
+    # --- 7. RENDER ---
     prefill = {'name': '', 'email': '', 'phone': '', 'address': ''}
     if user:
         prefill['name'] = user.get('customer_name') or user.get('employee_name') or ''
         prefill['email'] = user.get('email') or ''
         if user.get('customer_id'):
             try:
-                cust_res = supabase.table('customers').select('phone_number, address').eq('id', user['customer_id']).maybe_single().execute()
-                if cust_res and cust_res.data:
-                    prefill['phone'] = cust_res.data.get('phone_number', '')
-                    prefill['address'] = cust_res.data.get('address', '')
+                cust = supabase.table('customers').select('phone_number, address').eq('id', user['customer_id']).maybe_single().execute()
+                if cust.data: prefill['phone'] = cust.data.get('phone_number', ''); prefill['address'] = cust.data.get('address', '')
             except: pass
 
-    return render_template(
-        'product_checkout.html',
-        logo_url=saas_settings.get('saas_logo_url'),
-        app_name=saas_settings.get('app_name', 'ISP Manager'),
-        contact_email=saas_settings.get('contact_email', 'support@huda-it.com'),
-        cart_products=cart_products_snapshot,
-        subtotal=subtotal,
-        shipping_cost=shipping_cost,
-        discount_amount=discount_amount, 
-        total_price=total_price,
-        prefill=prefill
-    )# --- REPLACE this function in app.py ---
+    return render_template('product_checkout.html', logo_url=saas_settings.get('saas_logo_url'),
+        app_name=saas_settings.get('app_name'), contact_email=saas_settings.get('contact_email'),
+        cart_products=cart_products_snapshot, subtotal=subtotal, shipping_cost=shipping_cost,
+        discount_amount=discount_amount, total_price=total_price, prefill=prefill)# --- REPLACE this function in app.py ---
 
 @app.route('/product-order-success/<string:order_number>')
 def product_order_success(order_number):
@@ -5009,6 +4964,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
