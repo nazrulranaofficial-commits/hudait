@@ -4288,12 +4288,10 @@ def order_status(order_number):
 
 # --- REPLACE this function in app.py ---
 
-
-
 @app.route('/product-checkout', methods=['GET', 'POST'])
 def product_checkout():
     """
-    Checkout page logic with FIXED Variable Scope.
+    Checkout page logic with FIXED Variable Scope & Email Arguments.
     """
     saas_settings = get_saas_settings()
     cart = session.get('cart', {})
@@ -4421,14 +4419,23 @@ def product_checkout():
                 
                 # --- EMAIL LOGIC ---
                 try:
+                    # PASS ALL ARGUMENTS INCLUDING DISCOUNT_AMOUNT
                     email_service.send_product_order_confirmation_customer(
-                        saas_settings, form_data['email'], form_data,
-                        new_order_number, cart_products_snapshot, total_price,
-                        shipping_cost, discount_amount, payment_details=None
+                        saas_settings, 
+                        form_data['email'], 
+                        form_data, # Full details for address
+                        new_order_number, 
+                        cart_products_snapshot, 
+                        total_price,
+                        shipping_cost, 
+                        discount_amount, # <--- THIS WAS MISSING
+                        payment_details=None
                     )
-                except Exception as e: print(f"Customer Email Error: {e}")
+                except Exception as e: 
+                    print(f"Customer Email Error: {e}")
                 
                 try:
+                    # Robust Admin Email Fallback
                     admin_email = (saas_settings.get('contact_email') or 
                                    saas_settings.get('brevo_sender_email') or 
                                    saas_settings.get('smtp_user') or
@@ -4492,7 +4499,7 @@ def product_checkout():
     return render_template('product_checkout.html', logo_url=saas_settings.get('saas_logo_url'),
         app_name=saas_settings.get('app_name'), contact_email=saas_settings.get('contact_email'),
         cart_products=cart_products_snapshot, subtotal=subtotal, shipping_cost=shipping_cost,
-        discount_amount=discount_amount, total_price=total_price, prefill=prefill)# --- REPLACE this function in app.py ---
+        discount_amount=discount_amount, total_price=total_price, prefill=prefill)
 
 @app.route('/product-order-success/<string:order_number>')
 def product_order_success(order_number):
@@ -4530,29 +4537,19 @@ def product_payment_return():
     """
     Callback URL for ShurjoPay after a PRODUCT payment.
     """
-    # --- *** THIS IS THE FIX (Part 1) *** ---
-    # Get the gateway's tx_id and our pending order_id from the session
-    order_id_from_sp = request.args.get('order_id') # This is the gateway_tx_id
-    pending_order_id = session.pop('pending_order_id', None) # Get our order ID
-    # --- *** END OF FIX *** ---
+    order_id_from_sp = request.args.get('order_id')
+    pending_order_id = session.pop('pending_order_id', None)
 
     if not order_id_from_sp or order_id_from_sp.startswith("NOK"):
         flash("Payment was cancelled or failed. Please try again.", "error")
-        
-        # --- *** THIS IS THE FIX (Part 2) *** ---
-        # If payment failed, delete the pending order we created
+        # Cleanup pending order
         try:
             if pending_order_id:
                 supabase.table('product_orders').delete().eq('id', pending_order_id).execute()
-                print(f"Deleted failed/pending order {pending_order_id}.")
             elif order_id_from_sp:
-                # Fallback in case session failed
                 supabase.table('product_orders').delete().eq('gateway_tx_id', order_id_from_sp).execute()
-        except Exception as e:
-            print(f"Error deleting failed order: {e}")
-        # --- *** END OF FIX *** ---
-            
-        return redirect(url_for('cart')) # Send them back to the cart
+        except: pass
+        return redirect(url_for('cart'))
 
     saas_settings = get_saas_settings()
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
@@ -4560,56 +4557,30 @@ def product_payment_return():
     try:
         response = None
         if is_sandbox:
-            print("SANDBOX MODE: Simulating successful product payment.")
-            response = {
-                "sp_code": 1000, "message": "Sandboxed Payment Success",
-                "order_id": order_id_from_sp, "method": "Sandbox Test Card",
-                "bank_trx_id": "SP_SANDBOX_DUMMY_TXID",
-                "currency": "BDT",
-                "amount": "0.00"
-            }
+            response = {"sp_code": 1000, "message": "Sandboxed Payment Success", "order_id": order_id_from_sp, "method": "Sandbox Test Card", "bank_trx_id": "MOCK", "currency": "BDT"}
         else:
-            print("LIVE MODE: Attempting to verify product payment.")
             response = safe_verify_payment(saas_settings, order_id_from_sp)
             
         if isinstance(response, dict) and response.get('sp_code') == 1000:
-            # --- PAYMENT IS VERIFIED ---
-            
+            # Payment Verified
             gateway_tx_id = response.get('order_id') 
-            order_res = supabase.table('product_orders')\
-                .select('*')\
-                .eq('gateway_tx_id', gateway_tx_id)\
-                .maybe_single().execute()
+            order_res = supabase.table('product_orders').select('*').eq('gateway_tx_id', gateway_tx_id).maybe_single().execute()
             
-            if not order_res.data:
-                raise Exception(f"Payment verified, but no matching order found for gateway_tx_id: {gateway_tx_id}")
-            
+            if not order_res.data: raise Exception("Order missing")
             order = order_res.data
             
-            update_payload = {
+            supabase.table('product_orders').update({
                 "status": "Processing (Paid)", 
                 "payment_method": response.get('method'),
                 "transaction_id": response.get('bank_trx_id')
-            }
-            
-            supabase.table('product_orders').update(update_payload).eq('id', order['id']).execute()
+            }).eq('id', order['id']).execute()
 
-            if order.get('promo_code'):
-                try:
-                    # We have to find the promo ID based on the code string stored in the order
-                    p_res = supabase.table('product_promos').select('id, usage_count').eq('code', order['promo_code']).maybe_single().execute()
-                    if p_res.data:
-                        new_count = p_res.data['usage_count'] + 1
-                        supabase.table('product_promos').update({'usage_count': new_count}).eq('id', p_res.data['id']).execute()
-                        print(f"Incremented usage for promo {order['promo_code']}")
-                except Exception as e:
-                    print(f"Error incrementing promo usage: {e}")
-            
-            # --- SEND PAID EMAILS ---
+            # --- EMAIL LOGIC (UPDATED FOR NEW SIGNATURE) ---
             form_data = order.get('customer_details', {})
             order_items = order.get('order_items', [])
             total_amount = float(order.get('total_amount', 0))
             shipping_cost = float(order.get('shipping_cost', 0.0))
+            discount_amount = float(order.get('discount_amount', 0.0)) # <--- Get discount
             
             try:
                 response['amount'] = total_amount 
@@ -4617,56 +4588,43 @@ def product_payment_return():
                 email_service.send_product_order_confirmation_customer(
                     saas_settings, 
                     to_email=form_data.get('email'), 
-                    customer_name=form_data.get('full_name'),
+                    customer_details=form_data, # <--- Pass FULL dict, not name
                     order_number=order['order_number'], 
                     order_items=order_items,
                     total_amount=total_amount,
                     shipping_cost=shipping_cost,
+                    discount_amount=discount_amount, # <--- Pass discount
                     payment_details=response
                 )
-            except Exception as e:
-                print(f"Warning: Failed to send CUSTOMER (paid) confirmation email: {e}")
+            except Exception as e: print(f"Customer Email Error: {e}")
             
+            # Send Admin Email
             try:
-                admin_email = saas_settings.get('contact_email')
+                admin_email = (saas_settings.get('contact_email') or saas_settings.get('brevo_sender_email') or os.environ.get('SENDER_EMAIL'))
                 if admin_email:
-                    admin_html_body = render_template('product_order_admin_email.html',
-                                                      form_data=form_data,
-                                                      order_items=order_items,
-                                                      total_amount=total_amount,
-                                                      shipping_cost=shipping_cost,
-                                                      order_number=order['order_number'],
-                                                      payment_details=response)
+                    try:
+                        admin_body = render_template('product_order_admin_email.html',
+                                                      form_data=form_data, order_items=order_items,
+                                                      total_amount=total_amount, shipping_cost=shipping_cost,
+                                                      order_number=order['order_number'], payment_details=response)
+                    except: admin_body = f"New Paid Order #{order['order_number']}"
                     
-                    email_service.send_generic_email(
-                        saas_settings, admin_email,
-                        f"New PAID Product Order: {order['order_number']}",
-                        admin_html_body
-                    )
-            except Exception as e:
-                print(f"Warning: Failed to send ADMIN (paid) notification email: {e}")
+                    email_service.send_generic_email(saas_settings, admin_email, f"New PAID Product Order: {order['order_number']}", admin_body)
+            except Exception as e: print(f"Admin Email Error: {e}")
             
-            session.pop('cart', None) # Clear the cart
-            flash("Payment successful! Your order is now being processed.", "success")
+            session.pop('cart', None)
+            flash("Payment successful! Your order is being processed.", "success")
             return redirect(url_for('product_order_success', order_number=order['order_number']))
             
         else:
-            # --- *** THIS IS THE FIX (Part 3) *** ---
-            # Payment was NOT verified, so delete the pending order
-            error_msg = response.get('message', 'Payment verification failed.')
-            flash(f"Payment Failed: {error_msg}. Please try again or select Cash on Delivery.", "error")
-            try:
-                if pending_order_id:
-                    supabase.table('product_orders').delete().eq('id', pending_order_id).execute()
-                    print(f"Deleted unverified order {pending_order_id}.")
-            except Exception as e:
-                print(f"Error deleting unverified order: {e}")
+            # Payment Failed
+            flash(f"Payment Failed: {response.get('message')}", "error")
+            if pending_order_id: supabase.table('product_orders').delete().eq('id', pending_order_id).execute()
             return redirect(url_for('product_checkout'))
-            # --- *** END OF FIX *** ---
 
     except Exception as e:
-        print(f"CRITICAL: Failed to process product payment return: {e}")
-        flash(f"An error occurred: {e}", "error")
+        print(f"Callback Error: {e}")
+        flash("An error occurred.", "error")
         return redirect(url_for('product_checkout'))
 
 
@@ -4958,6 +4916,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
