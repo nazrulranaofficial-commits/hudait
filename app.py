@@ -4336,7 +4336,7 @@ def product_checkout():
         if product_id not in cart: continue
         quantity = cart[product_id]
         
-        # Stock Check (Optional: Strict or Loose)
+        # Stock Check
         if product.get('stock_quantity', 0) < quantity:
             flash(f"Not enough stock for {product.get('name')}.", "error")
             return redirect(url_for('cart'))
@@ -4428,17 +4428,52 @@ def product_checkout():
                 
                 order_res = supabase.table('product_orders').insert(order_payload).execute()
                 
-                # Emails (Fail-safe)
-                try:
-                    email_service.send_product_order_confirmation_customer(
-                        saas_settings, form_data['email'], form_data['full_name'],
-                        new_order_number, cart_products_snapshot, total_price,
-                        shipping_cost, payment_details=None
-                    )
-                except: pass
+                # --- EMAIL LOGIC (COD) ---
                 
-                session.pop('cart', None) 
-                session.pop('promo', None)
+                # 1. Customer Email
+                try:
+                    print(f"Sending COD Email to Customer: {form_data['email']}")
+                    success, msg = email_service.send_product_order_confirmation_customer(
+                        saas_settings, 
+                        form_data['email'], 
+                        form_data['full_name'],
+                        new_order_number, 
+                        cart_products_snapshot, 
+                        total_price,
+                        shipping_cost, 
+                        payment_details=None
+                    )
+                    if not success: print(f"Customer Email Failed: {msg}")
+                except Exception as e:
+                    print(f"CRITICAL EMAIL ERROR (Customer): {e}")
+                
+                # 2. Admin Email (Updated Logic)
+                try:
+                    # Try finding an email in this order: Contact > Brevo Sender > SMTP User
+                    admin_email = (saas_settings.get('contact_email') or 
+                                   saas_settings.get('brevo_sender_email') or 
+                                   saas_settings.get('smtp_user'))
+                    
+                    if admin_email:
+                        print(f"Sending Admin Notification to: {admin_email}")
+                        admin_body = render_template('product_order_admin_email.html',
+                                                      form_data=form_data,
+                                                      order_items=cart_products_snapshot,
+                                                      total_amount=total_price,
+                                                      shipping_cost=shipping_cost,
+                                                      order_number=new_order_number,
+                                                      payment_details=None)
+                        email_service.send_generic_email(
+                            saas_settings, admin_email,
+                            f"New COD Product Order: {new_order_number}",
+                            admin_body
+                        )
+                    else:
+                        print("Admin Email Skipped: No contact_email, brevo_sender_email, or smtp_user found in settings.")
+                except Exception as e: 
+                    print(f"Admin Email Error: {e}")
+
+                session.pop('cart', None); session.pop('promo', None)
                 flash("Your order has been placed successfully!", "success")
                 return redirect(url_for('product_order_success', order_number=new_order_number))
 
@@ -4485,7 +4520,6 @@ def product_checkout():
             return redirect(url_for('product_checkout'))
 
     # --- 7. RENDER CHECKOUT PAGE (GET REQUEST) ---
-    # Auto-fill for GET request
     prefill = {'name': '', 'email': '', 'phone': '', 'address': ''}
     if user:
         prefill['name'] = user.get('customer_name') or user.get('employee_name') or ''
@@ -4975,5 +5009,6 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
