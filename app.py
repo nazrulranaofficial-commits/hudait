@@ -115,7 +115,7 @@ def get_user_from_session():
 def get_shurjopay_config(saas_settings):
     """
     Helper function to generate the ShurjoPayConfigModel from saas_settings.
-    FIXED: Uses lowercase keys for the config model.
+    FIXED: Changed 'endpoint' to 'base_url'.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -127,11 +127,10 @@ def get_shurjopay_config(saas_settings):
     return_url = url_for('shurjopay_return', _external=True)
     cancel_url = url_for('shurjopay_cancel', _external=True)
 
-    # FIX: Changed keys from SP_USERNAME to username, etc.
     return ShurjoPayConfigModel(
         username=saas_settings.get('gateway_store_id'),
         password=saas_settings.get('gateway_store_password'),
-        endpoint=api_endpoint,
+        base_url=api_endpoint,  # <--- RENAMED from 'endpoint'
         prefix=saas_settings.get('gateway_prefix'),
         return_url=return_url,
         cancel_url=cancel_url
@@ -140,7 +139,7 @@ def get_shurjopay_config(saas_settings):
 def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     """
     Initializes and returns a ShurjopayPlugin instance based on saas_settings.
-    FIXED: Uses lowercase keys for the config model.
+    FIXED: Changed 'endpoint' to 'base_url'.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -154,11 +153,10 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     if not cancel_url:
         cancel_url = url_for('shurjopay_cancel', _external=True)
 
-    # FIX: Changed keys from SP_USERNAME to username, etc.
     sp_config = ShurjoPayConfigModel(
         username=saas_settings.get('gateway_store_id'),
         password=saas_settings.get('gateway_store_password'),
-        endpoint=api_endpoint,
+        base_url=api_endpoint,  # <--- RENAMED from 'endpoint'
         prefix=saas_settings.get('gateway_prefix'),
         return_url=return_url,
         cancel_url=cancel_url
@@ -170,19 +168,18 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     shurjopay.logger.addHandler(logging.NullHandler())
     shurjopay.logger.propagate = False
     
-    return shurjopay # --- *** END OF REPLACEMENT *** ---
-# --- *** ADD THIS NEW HELPER FUNCTION TO APP.PY *** ---
-#
+    return shurjopay
+
 def safe_verify_payment(saas_settings, order_id_from_sp):
     """
-    Safe verification that uses lowercase attributes (sp_config.username).
+    Safe verification that uses 'base_url' instead of 'endpoint'.
     """
     print(f"Safely verifying order: {order_id_from_sp}")
     
     sp_config = get_shurjopay_config(saas_settings) 
     
-    # FIX: Access attributes via lowercase names (username, password, endpoint)
-    token_url = f"{sp_config.endpoint}/api/get_token"
+    # FIX: Use 'base_url' attribute
+    token_url = f"{sp_config.base_url}/api/get_token"
     token_payload = {
         "username": sp_config.username,
         "password": sp_config.password
@@ -202,8 +199,8 @@ def safe_verify_payment(saas_settings, order_id_from_sp):
         "Authorization": f"{token_type} {token}"
     }
     
-    # FIX: Use lowercase endpoint
-    verify_url = f"{sp_config.endpoint}/api/verification"
+    # FIX: Use 'base_url' attribute
+    verify_url = f"{sp_config.base_url}/api/verification"
     verify_payload = {"order_id": order_id_from_sp}
     
     response = requests.post(verify_url, headers=headers, json=verify_payload)
@@ -4912,6 +4909,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
