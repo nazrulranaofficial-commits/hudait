@@ -4293,7 +4293,7 @@ def order_status(order_number):
 @app.route('/product-checkout', methods=['GET', 'POST'])
 def product_checkout():
     """
-    Checkout page logic with ROBUST ADMIN EMAIL FALLBACKS & PROFESSIONAL TEMPLATES.
+    Checkout page logic with FIXED EMAIL ARGUMENTS.
     """
     saas_settings = get_saas_settings()
     cart = session.get('cart', {})
@@ -4363,7 +4363,7 @@ def product_checkout():
             "subtotal": item_sub,
             "original_price": op,
             "final_price_per_item": fp,
-            "is_discounted": is_disc,
+            "is_discounted": is_discounted,
             "category_id": product.get('category_id')
         })
     
@@ -4384,15 +4384,8 @@ def product_checkout():
     # --- 6. HANDLE ORDER SUBMISSION ---
     if request.method == 'POST':
         payment_choice = request.form.get('payment_method')
-        
-        street_address = request.form.get('address')
-        division = request.form.get('division')
-        district = request.form.get('district')
-        thana = request.form.get('thana')
-        
-        full_address = f"{street_address}"
-        if thana and district and division:
-            full_address = f"{street_address}, {thana}, {district}, {division}"
+        street = request.form.get('address')
+        full_address = f"{street}, {request.form.get('thana')}, {request.form.get('district')}, {request.form.get('division')}"
         
         form_data = {
             "full_name": request.form.get('full_name'),
@@ -4401,94 +4394,66 @@ def product_checkout():
             "address": full_address
         }
         
-        if not all([form_data['full_name'], form_data['email'], form_data['phone'], street_address]):
+        if not all([form_data['full_name'], form_data['email'], form_data['phone'], street]):
             flash("All fields are required.", "error")
             return redirect(url_for('product_checkout'))
             
         try:
             # Generate Order Number
             order_num_res = supabase.rpc('generate_new_product_order_number').execute()
-            new_order_number = order_num_res.data if order_num_res.data else f"ORD-{int(datetime.now().timestamp())}"
+            new_order_number = order_num_res.data or f"ORD-{int(datetime.now().timestamp())}"
 
             order_payload = {
-                "order_number": new_order_number, 
-                "customer_details": form_data, 
-                "order_items": cart_products_snapshot, 
-                "shipping_cost": shipping_cost,
-                "discount_amount": discount_amount, 
-                "promo_code": promo_code_used,
-                "total_amount": total_price, 
-                "status": "Pending Payment", 
-                "payment_method": "Unknown"
+                "order_number": new_order_number, "customer_details": form_data, 
+                "order_items": cart_products_snapshot, "shipping_cost": shipping_cost,
+                "discount_amount": discount_amount, "promo_code": promo_code_used,
+                "total_amount": total_price, "status": "Pending Payment", "payment_method": "Unknown"
             }
 
             # A) COD Payment
             if payment_choice == 'cod':
                 order_payload['status'] = 'Processing (COD)'
                 order_payload['payment_method'] = 'Cash on Delivery'
-                
                 supabase.table('product_orders').insert(order_payload).execute()
                 
-                # --- EMAIL LOGIC ---
+                # --- EMAIL LOGIC (FIXED) ---
                 
-                # 1. Customer Email (Using updated Professional logic)
+                # 1. Customer Email
                 try:
-                    email_service.send_product_order_confirmation_customer(
+                    # PASS ALL ARGUMENTS INCLUDING DISCOUNT_AMOUNT
+                    success, msg = email_service.send_product_order_confirmation_customer(
                         saas_settings, 
                         form_data['email'], 
-                        form_data, # Pass full dict for Address/Phone
+                        form_data, # Full details for address
                         new_order_number, 
                         cart_products_snapshot, 
                         total_price,
                         shipping_cost, 
-                        discount_amount, 
+                        discount_amount, # <--- THIS WAS MISSING
                         payment_details=None
                     )
+                    if not success: print(f"Customer Email Failed: {msg}")
                 except Exception as e: 
                     print(f"Customer Email Error: {e}")
                 
-                # 2. Admin Email (FIXED & ROBUST)
+                # 2. Admin Email
                 try:
-                    # Priority: Contact Email -> Brevo Sender -> SMTP User -> Env Var
                     admin_email = (saas_settings.get('contact_email') or 
                                    saas_settings.get('brevo_sender_email') or 
                                    saas_settings.get('smtp_user') or
                                    os.environ.get('SENDER_EMAIL'))
                     
                     if admin_email:
-                        print(f"Sending Admin Notification to: {admin_email}")
-                        
-                        # Try rendering HTML, fallback to text if file missing
                         try:
                             admin_body = render_template('product_order_admin_email.html',
-                                form_data=form_data, 
-                                order_items=cart_products_snapshot,
-                                total_amount=total_price, 
-                                shipping_cost=shipping_cost,
-                                order_number=new_order_number, 
-                                payment_details=None)
-                        except Exception as tpl_e:
-                            print(f"Template Error ({tpl_e}), using fallback text.")
-                            admin_body = f"""
-                            <h3>New COD Order: {new_order_number}</h3>
-                            <p><b>Customer:</b> {form_data['full_name']} ({form_data['phone']})</p>
-                            <p><b>Total:</b> {total_price} BDT</p>
-                            <p>Please check the admin panel for details.</p>
-                            """
+                                form_data=form_data, order_items=cart_products_snapshot,
+                                total_amount=total_price, shipping_cost=shipping_cost,
+                                order_number=new_order_number, payment_details=None)
+                        except:
+                            admin_body = f"New COD Order #{new_order_number}. Total: {total_price}."
                         
-                        email_service.send_generic_email(
-                            saas_settings, admin_email,
-                            f"New COD Product Order: {new_order_number}",
-                            admin_body
-                        )
-                        print("Admin email sent.")
-                    else:
-                        print("CRITICAL: No Admin Email found in settings.")
-                        
-                    sys.stdout.flush() 
-                except Exception as e: 
-                    print(f"Admin Email System Error: {e}")
-                    sys.stdout.flush()
+                        email_service.send_generic_email(saas_settings, admin_email, f"New Order: {new_order_number}", admin_body)
+                except Exception as e: print(f"Admin Email Error: {e}")
 
                 session.pop('cart', None); session.pop('promo', None)
                 flash("Order placed successfully!", "success")
@@ -4499,29 +4464,19 @@ def product_checkout():
                 if not saas_settings.get('gateway_enabled', False):
                     flash("Online payments disabled.", "error"); return redirect(url_for('product_checkout'))
                 
-                shurjopay = initialize_shurjopay(
-                    saas_settings,
-                    return_url=url_for('product_payment_return', _external=True),
-                    cancel_url=url_for('product_payment_cancel', _external=True)
-                )
-                
-                payment_payload_dict = {
-                    "amount": total_price, "order_id": new_order_number, 
-                    "customer_name": form_data['full_name'], "customer_phone": form_data['phone'],
-                    "customer_email": form_data['email'], "customer_city": "Dhaka", 
-                    "customer_address": form_data['address'], "currency": "BDT", "customer_post_code": "1200"
-                }
-                payment_payload_obj = SimpleNamespace(**payment_payload_dict)
-                response = shurjopay.make_payment(payment_payload_obj)
+                shurjopay = initialize_shurjopay(saas_settings, return_url=url_for('product_payment_return', _external=True), cancel_url=url_for('product_payment_cancel', _external=True))
+                pp_obj = SimpleNamespace(amount=total_price, order_id=new_order_number, 
+                    customer_name=form_data['full_name'], customer_phone=form_data['phone'],
+                    customer_email=form_data['email'], customer_city="Dhaka", 
+                    customer_address=form_data['address'], currency="BDT", customer_post_code="1200")
+                response = shurjopay.make_payment(pp_obj)
                 
                 if hasattr(response, 'checkout_url'):
                     order_payload['checkout_url'] = response.checkout_url
                     order_payload['gateway_tx_id'] = response.sp_order_id
-                    
                     res = supabase.table('product_orders').insert(order_payload).execute()
-                    if res.data:
-                        session['pending_order_id'] = res.data[0]['id']
-                        return redirect(response.checkout_url)
+                    if res.data: session['pending_order_id'] = res.data[0]['id']
+                    return redirect(response.checkout_url)
                 
                 flash("Gateway error.", "error"); return redirect(url_for('product_checkout'))
             
@@ -5012,6 +4967,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
