@@ -114,8 +114,8 @@ def get_user_from_session():
 
 def get_shurjopay_config(saas_settings):
     """
-    Helper function to generate the ShurjoPayConfigModel from saas_settings.
-    FIXED: Changed 'endpoint' to 'base_url'.
+    Helper function to generate the ShurjoPayConfigModel.
+    FIXED: Uses 'api_url' as requested by the error log.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -130,16 +130,15 @@ def get_shurjopay_config(saas_settings):
     return ShurjoPayConfigModel(
         username=saas_settings.get('gateway_store_id'),
         password=saas_settings.get('gateway_store_password'),
-        base_url=api_endpoint,  # <--- RENAMED from 'endpoint'
+        api_url=api_endpoint,  # <--- RENAMED to 'api_url'
         prefix=saas_settings.get('gateway_prefix'),
         return_url=return_url,
         cancel_url=cancel_url
     )
-
 def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     """
-    Initializes and returns a ShurjopayPlugin instance based on saas_settings.
-    FIXED: Changed 'endpoint' to 'base_url'.
+    Initializes and returns a ShurjopayPlugin instance.
+    FIXED: Uses 'api_url'.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -156,7 +155,7 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     sp_config = ShurjoPayConfigModel(
         username=saas_settings.get('gateway_store_id'),
         password=saas_settings.get('gateway_store_password'),
-        base_url=api_endpoint,  # <--- RENAMED from 'endpoint'
+        api_url=api_endpoint,  # <--- RENAMED to 'api_url'
         prefix=saas_settings.get('gateway_prefix'),
         return_url=return_url,
         cancel_url=cancel_url
@@ -172,14 +171,14 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
 
 def safe_verify_payment(saas_settings, order_id_from_sp):
     """
-    Safe verification that uses 'base_url' instead of 'endpoint'.
+    Safe verification that uses 'api_url'.
     """
     print(f"Safely verifying order: {order_id_from_sp}")
     
     sp_config = get_shurjopay_config(saas_settings) 
     
-    # FIX: Use 'base_url' attribute
-    token_url = f"{sp_config.base_url}/api/get_token"
+    # FIX: Use 'api_url' attribute
+    token_url = f"{sp_config.api_url}/api/get_token"
     token_payload = {
         "username": sp_config.username,
         "password": sp_config.password
@@ -199,8 +198,8 @@ def safe_verify_payment(saas_settings, order_id_from_sp):
         "Authorization": f"{token_type} {token}"
     }
     
-    # FIX: Use 'base_url' attribute
-    verify_url = f"{sp_config.base_url}/api/verification"
+    # FIX: Use 'api_url' attribute
+    verify_url = f"{sp_config.api_url}/api/verification"
     verify_payload = {"order_id": order_id_from_sp}
     
     response = requests.post(verify_url, headers=headers, json=verify_payload)
@@ -4909,6 +4908,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
