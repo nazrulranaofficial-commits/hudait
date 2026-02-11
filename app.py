@@ -4293,7 +4293,7 @@ def order_status(order_number):
 @app.route('/product-checkout', methods=['GET', 'POST'])
 def product_checkout():
     """
-    Checkout page logic with FIXED EMAIL ARGUMENTS.
+    Checkout page logic with FIXED Variable Scope.
     """
     saas_settings = get_saas_settings()
     cart = session.get('cart', {})
@@ -4344,13 +4344,16 @@ def product_checkout():
 
         op = float(product.get('selling_price', 0))
         fp = op
-        is_disc = False
+        
+        # --- FIX: Initialize variable BEFORE the if block ---
+        is_discounted = False 
+        
         start = product.get('discount_start_date') or '1970-01-01'
         end = product.get('discount_end_date') or '2099-12-31'
         
         if product.get('discount_percent', 0) > 0 and start <= today_date and end >= today_date:
             fp = op * (1 - (float(product.get('discount_percent', 0)) / 100))
-            is_disc = True
+            is_discounted = True
             
         item_sub = fp * qty
         subtotal += item_sub
@@ -4363,7 +4366,7 @@ def product_checkout():
             "subtotal": item_sub,
             "original_price": op,
             "final_price_per_item": fp,
-            "is_discounted": is_discounted,
+            "is_discounted": is_discounted, # Now safely defined
             "category_id": product.get('category_id')
         })
     
@@ -4416,27 +4419,15 @@ def product_checkout():
                 order_payload['payment_method'] = 'Cash on Delivery'
                 supabase.table('product_orders').insert(order_payload).execute()
                 
-                # --- EMAIL LOGIC (FIXED) ---
-                
-                # 1. Customer Email
+                # --- EMAIL LOGIC ---
                 try:
-                    # PASS ALL ARGUMENTS INCLUDING DISCOUNT_AMOUNT
-                    success, msg = email_service.send_product_order_confirmation_customer(
-                        saas_settings, 
-                        form_data['email'], 
-                        form_data, # Full details for address
-                        new_order_number, 
-                        cart_products_snapshot, 
-                        total_price,
-                        shipping_cost, 
-                        discount_amount, # <--- THIS WAS MISSING
-                        payment_details=None
+                    email_service.send_product_order_confirmation_customer(
+                        saas_settings, form_data['email'], form_data,
+                        new_order_number, cart_products_snapshot, total_price,
+                        shipping_cost, discount_amount, payment_details=None
                     )
-                    if not success: print(f"Customer Email Failed: {msg}")
-                except Exception as e: 
-                    print(f"Customer Email Error: {e}")
+                except Exception as e: print(f"Customer Email Error: {e}")
                 
-                # 2. Admin Email
                 try:
                     admin_email = (saas_settings.get('contact_email') or 
                                    saas_settings.get('brevo_sender_email') or 
@@ -4967,6 +4958,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
