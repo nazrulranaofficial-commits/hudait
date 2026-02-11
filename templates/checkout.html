@@ -21,6 +21,7 @@
             --color-shadow: rgba(90, 103, 216, 0.1);
             --color-success: #38A169;
             --color-error: #E53E3E;
+            --color-bkash: #E2136E; /* bKash Pink */
         }
 
         *, *:before, *:after { box-sizing: border-box; }
@@ -271,7 +272,7 @@
             background-color: #F0FFF4; color: #2F855A; border-color: var(--color-success); 
         }
         
-        /* --- 6. "Pay Now" / "Pay Later" Buttons --- */
+        /* --- 6. Payment Buttons --- */
         .payment-choice-container {
             margin-top: 2rem;
             border-top: 1px solid var(--color-border);
@@ -285,42 +286,44 @@
         }
         .button-group {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); /* Adaptive Grid */
             gap: 1rem;
         }
         .submit-btn {
             width: 100%;
-            padding: 16px;
+            padding: 16px 10px;
             border: none;
             border-radius: 8px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
+            white-space: nowrap;
         }
-        .submit-btn i {
-            margin-right: 10px;
-        }
+        .submit-btn i { margin-right: 8px; }
         
         .btn-pay-now {
             background: var(--color-success);
             color: white;
         }
-        .btn-pay-now:hover {
-            background: #2F855A;
-        }
+        .btn-pay-now:hover { background: #2F855A; }
         
         .btn-pay-later {
             background-color: #fff;
             color: var(--color-primary);
             border: 2px solid var(--color-primary);
         }
-        .btn-pay-later:hover {
-            background-color: var(--color-bg-light);
+        .btn-pay-later:hover { background-color: var(--color-bg-light); }
+
+        /* --- NEW: bKash Button --- */
+        .btn-bkash {
+            background-color: var(--color-bkash);
+            color: white;
         }
+        .btn-bkash:hover { background-color: #C2105E; }
 
         /* --- 7. Footer --- */
         .promo-footer {
@@ -457,6 +460,9 @@
                         <div class="button-group">
                             <button type="submit" name="payment_method" value="pay_later" class="submit-btn btn-pay-later">
                                 <i class="fas fa-clock"></i> Pay Later
+                            </button>
+                            <button type="submit" name="payment_method" value="bkash" class="submit-btn btn-bkash">
+                                <i class="fas fa-mobile-alt"></i> bKash
                             </button>
                             <button type="submit" name="payment_method" value="pay_now" class="submit-btn btn-pay-now">
                                 <i class="fas fa-credit-card"></i> Pay Now
