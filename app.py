@@ -115,6 +115,7 @@ def get_user_from_session():
 def get_shurjopay_config(saas_settings):
     """
     Helper function to generate the ShurjoPayConfigModel from saas_settings.
+    FIXED: Uses lowercase keys for the config model.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -126,20 +127,20 @@ def get_shurjopay_config(saas_settings):
     return_url = url_for('shurjopay_return', _external=True)
     cancel_url = url_for('shurjopay_cancel', _external=True)
 
+    # FIX: Changed keys from SP_USERNAME to username, etc.
     return ShurjoPayConfigModel(
-        SP_USERNAME=saas_settings.get('gateway_store_id'),
-        SP_PASSWORD=saas_settings.get('gateway_store_password'),
-        SP_ENDPOINT=api_endpoint,
-        SP_PREFIX=saas_settings.get('gateway_prefix'),
-        SP_RETURN=return_url,
-        SP_CANCEL=cancel_url,
-        SP_LOGDIR=None # This disables file logging
+        username=saas_settings.get('gateway_store_id'),
+        password=saas_settings.get('gateway_store_password'),
+        endpoint=api_endpoint,
+        prefix=saas_settings.get('gateway_prefix'),
+        return_url=return_url,
+        cancel_url=cancel_url
     )
 
 def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     """
     Initializes and returns a ShurjopayPlugin instance based on saas_settings.
-    Can accept custom return/cancel URLs.
+    FIXED: Uses lowercase keys for the config model.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -148,20 +149,19 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     else:
         api_endpoint = "https://engine.shurjopayment.com"
 
-    # Use default SaaS plan URLs if custom ones aren't provided
     if not return_url:
         return_url = url_for('shurjopay_return', _external=True)
     if not cancel_url:
         cancel_url = url_for('shurjopay_cancel', _external=True)
 
+    # FIX: Changed keys from SP_USERNAME to username, etc.
     sp_config = ShurjoPayConfigModel(
-        SP_USERNAME=saas_settings.get('gateway_store_id'),
-        SP_PASSWORD=saas_settings.get('gateway_store_password'),
-        SP_ENDPOINT=api_endpoint,
-        SP_PREFIX=saas_settings.get('gateway_prefix'),
-        SP_RETURN=return_url,
-        SP_CANCEL=cancel_url,
-        SP_LOGDIR=None
+        username=saas_settings.get('gateway_store_id'),
+        password=saas_settings.get('gateway_store_password'),
+        endpoint=api_endpoint,
+        prefix=saas_settings.get('gateway_prefix'),
+        return_url=return_url,
+        cancel_url=cancel_url
     )
     
     shurjopay = ShurjopayPlugin(sp_config)
@@ -170,29 +170,26 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     shurjopay.logger.addHandler(logging.NullHandler())
     shurjopay.logger.propagate = False
     
-    return shurjopay
-# --- *** END OF REPLACEMENT *** ---
+    return shurjopay # --- *** END OF REPLACEMENT *** ---
 # --- *** ADD THIS NEW HELPER FUNCTION TO APP.PY *** ---
 #
 def safe_verify_payment(saas_settings, order_id_from_sp):
     """
-    This is a safe, custom version of verify_payment()
-    that does not crash on 'None' or 'null' values.
-    It performs the verification manually.
+    Safe verification that uses lowercase attributes (sp_config.username).
     """
     print(f"Safely verifying order: {order_id_from_sp}")
     
-    # 1. Get the config
-    sp_config = get_shurjopay_config(saas_settings) # Assumes you have this function from before
+    sp_config = get_shurjopay_config(saas_settings) 
     
-    # 2. Manually get auth token
-    token_url = f"{sp_config.SP_ENDPOINT}/api/get_token"
+    # FIX: Access attributes via lowercase names (username, password, endpoint)
+    token_url = f"{sp_config.endpoint}/api/get_token"
     token_payload = {
-        "username": sp_config.SP_USERNAME,
-        "password": sp_config.SP_PASSWORD
+        "username": sp_config.username,
+        "password": sp_config.password
     }
+    
     token_res = requests.post(token_url, json=token_payload)
-    token_res.raise_for_status() # Raise error if token fails
+    token_res.raise_for_status() 
     token_data = token_res.json()
     
     if not token_data or 'token' not in token_data:
@@ -205,19 +202,18 @@ def safe_verify_payment(saas_settings, order_id_from_sp):
         "Authorization": f"{token_type} {token}"
     }
     
-    # 3. Manually verify payment
-    verify_url = f"{sp_config.SP_ENDPOINT}/api/verification"
+    # FIX: Use lowercase endpoint
+    verify_url = f"{sp_config.endpoint}/api/verification"
     verify_payload = {"order_id": order_id_from_sp}
     
     response = requests.post(verify_url, headers=headers, json=verify_payload)
-    response.raise_for_status() # Raise error if verification fails
+    response.raise_for_status() 
     
     response_data = response.json()
     
     if not response_data or not isinstance(response_data, list):
         raise Exception("ShurjoPay: Verification response was empty or not a list.")
         
-    # 4. Get the first result and SAFELY clean it
     payment_details = response_data[0]
     
     cleaned_details = {}
