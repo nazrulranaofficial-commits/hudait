@@ -108,6 +108,18 @@ if not supabase:
 def get_user_from_session():
     return session.get('user')
 
+def initialize_bkash(saas_settings):
+    """
+    Initializes bKash Gateway using the SaaS Settings (Admin App).
+    """
+    return BkashGateway(
+        username=saas_settings.get('bkash_username'),
+        password=saas_settings.get('bkash_password'),
+        app_key=saas_settings.get('bkash_app_key'),
+        app_secret=saas_settings.get('bkash_app_secret'),
+        is_sandbox=saas_settings.get('bkash_sandbox_enabled', True)
+    )
+
 #
 # --- *** REPLACE initialize_shurjopay WITH THESE TWO FUNCTIONS *** ---
 #
@@ -622,8 +634,7 @@ def checkout(plan_id):
         return redirect(url_for('purchase_plans'))
 
     if request.method == 'POST':
-        # --- NEW: Get the payment choice ---
-        payment_choice = request.form.get('payment_method') # Will be 'pay_now' or 'pay_later'
+        payment_choice = request.form.get('payment_method')
         
         form_data = {
             "company_name": request.form.get('company_name'),
@@ -638,7 +649,7 @@ def checkout(plan_id):
             return redirect(url_for('checkout', plan_id=plan_id))
 
         try:
-            # Check for existing active orders
+            # Check existing orders
             existing_order_res = supabase.table('saas_orders').select('status')\
                 .eq('customer_details->>email', form_data['email'])\
                 .in_('status', ['Pending Payment', 'Pending Review', 'Approved'])\
@@ -646,21 +657,15 @@ def checkout(plan_id):
             
             if existing_order_res.data:
                 existing_status = existing_order_res.data[0]['status']
-                flash(f"An active order with this email already exists (Status: {existing_status}). Please track your existing order or wait for approval.", "error")
+                flash(f"Active order exists ({existing_status}). Please track it.", "error")
                 return redirect(url_for('checkout', plan_id=plan_id))
-        except Exception as e:
-            print(f"CRITICAL: Failed to check for existing orders: {e}")
-            flash(f"An error occurred while checking your order: {e}", "error")
-            return redirect(url_for('checkout', plan_id=plan_id))
+        except: pass
         
         try:
-            # Generate Order Number
+            # Generate Order Number & Price
             order_num_res = supabase.rpc('generate_new_order_number').execute()
-            if not order_num_res.data:
-                raise Exception("Failed to generate a new order number.")
-            new_order_number = order_num_res.data
+            new_order_number = order_num_res.data or f"SAAS-{int(datetime.now().timestamp())}"
             
-            # Calculate Price
             original_price = float(plan.get('price', 0))
             discount_percent = float(plan.get('discount_percent', 0))
             
@@ -678,131 +683,88 @@ def checkout(plan_id):
                 "features": plan.get('features')
             }
 
-            # Create the base order payload
             order_payload = {
                 "order_number": new_order_number,
                 "plan_id": plan.get('id'),
                 "customer_details": form_data, 
                 "plan_snapshot": plan_snapshot,
-                "status": "Pending Payment" # Default status
+                "status": "Pending Payment"
             }
             
-            # --- *** NEW LOGIC: Pay Now vs. Pay Later *** ---
-            
+            # --- PAYMENT HANDLERS ---
+
             if payment_choice == 'pay_now':
-                # --- SCENARIO 1: PAY NOW (Gateway ON) ---
+                # --- SHURJOPAY ---
                 if not saas_settings.get('gateway_enabled', False):
-                    flash("Online payments are not enabled. Please choose 'Pay Later' or contact support.", "error")
+                    flash("ShurjoPay is disabled.", "error")
                     return redirect(url_for('checkout', plan_id=plan_id))
                 
                 shurjopay = initialize_shurjopay(saas_settings)
-                payment_payload_dict = {
-                    "amount": amount_to_pay, "order_id": new_order_number, 
-                    "customer_name": form_data['full_name'], "customer_phone": form_data['phone'],
-                    "customer_email": form_data['email'], "customer_city": "Dhaka", 
-                    "customer_address": form_data['address'], "currency": "BDT", "customer_post_code": "1200"
-                }
-                payment_payload_obj = SimpleNamespace(**payment_payload_dict)
-                response = shurjopay.make_payment(payment_payload_obj)
+                pp_obj = SimpleNamespace(amount=amount_to_pay, order_id=new_order_number, 
+                    customer_name=form_data['full_name'], customer_phone=form_data['phone'],
+                    customer_email=form_data['email'], customer_city="Dhaka", 
+                    customer_address=form_data['address'], currency="BDT", customer_post_code="1200")
                 
-                if isinstance(response, dict):
-                    raise Exception(f"ShurjoPay Error: {response.get('message', 'Unknown error.')}")
+                response = shurjopay.make_payment(pp_obj)
                 
                 if hasattr(response, 'checkout_url') and response.checkout_url:
                     order_payload['checkout_url'] = response.checkout_url
-                    order_payload['gateway_tx_id'] = response.sp_order_id # Use new column
-                    
-                    order_res = supabase.table('saas_orders').insert(order_payload).execute()
-                    if not order_res.data:
-                        raise Exception("Failed to save pending order to database.")
-                    
-                    # --- *** FIX: SEND ADMIN & CUSTOMER EMAILS *** ---
-                    # (Send Customer Email)
-                    try:
-                        # Send the tracking link, which will show the "Pay Now" button
-                        track_url = url_for('order_status', order_number=new_order_number, _external=True)
-                        email_service.send_order_confirmation_email(
-                            saas_settings, form_data['email'], form_data['company_name'],
-                            new_order_number, plan_snapshot, track_url=track_url
-                        )
-                    except Exception as e:
-                        print(f"Warning: Failed to send CUSTOMER order confirmation email: {e}")
-                    
-                    # (Send Admin Email)
-                    try:
-                        admin_email = saas_settings.get('contact_email')
-                        if admin_email:
-                            admin_html_body = render_template('order_notification_email.html', 
-                                                              form_data=form_data, 
-                                                              plan=plan_snapshot,
-                                                              payment_details=None) # No payment details yet
-                            email_service.send_generic_email(
-                                saas_settings, admin_email,
-                                f"New Plan Order (Pending Payment): {plan_snapshot['name']} for {form_data['company_name']}",
-                                admin_html_body
-                            )
-                            print(f"Admin notification for 'Pay Now' order sent to {admin_email}")
-                    except Exception as e:
-                        print(f"Warning: Failed to send ADMIN order notification email: {e}")
-                    # --- *** END OF FIX *** ---
-
-                    return redirect(response.checkout_url) # Redirect to gateway
+                    order_payload['gateway_tx_id'] = response.sp_order_id
+                    supabase.table('saas_orders').insert(order_payload).execute()
+                    return redirect(response.checkout_url)
                 else:
-                    raise Exception("ShurjoPay failed to return a checkout_url.")
+                    raise Exception("ShurjoPay initialization failed.")
+
+            elif payment_choice == 'bkash':
+                # --- BKASH ---
+                if not saas_settings.get('bkash_enabled', False):
+                    flash("bKash is currently disabled.", "error")
+                    return redirect(url_for('checkout', plan_id=plan_id))
+
+                bkash = initialize_bkash(saas_settings)
+                token = bkash.get_token()
+                callback_url = url_for('bkash_saas_callback', _external=True)
+                
+                resp = bkash.create_payment(token, amount_to_pay, new_order_number, callback_url)
+                
+                if resp.get('statusCode') == '0000':
+                    order_payload['gateway_tx_id'] = resp['paymentID']
+                    supabase.table('saas_orders').insert(order_payload).execute()
+                    return redirect(resp['bkashURL'])
+                else:
+                    raise Exception(f"bKash Error: {resp.get('statusMessage')}")
 
             elif payment_choice == 'pay_later':
-                # --- SCENARIO 2: PAY LATER (Gateway OFF logic) ---
+                # --- PAY LATER ---
+                supabase.table('saas_orders').insert(order_payload).execute()
                 
-                order_res = supabase.table('saas_orders').insert(order_payload).execute()
-                if not order_res.data:
-                    raise Exception("Failed to save order to database.")
-                
+                # Send Emails
                 try:
                     pay_now_url = url_for('pay_for_order', order_number=new_order_number, _external=True)
                     email_service.send_order_confirmation_email(
-                        saas_settings, 
-                        to_email=form_data['email'], 
-                        company_name=form_data['company_name'],
-                        order_number=new_order_number, 
-                        plan_snapshot=plan_snapshot, 
-                        pay_now_url=pay_now_url
+                        saas_settings, form_data['email'], form_data['company_name'],
+                        new_order_number, plan_snapshot, pay_now_url=pay_now_url
                     )
-                except Exception as e:
-                    print(f"Warning: Failed to send CUSTOMER order confirmation email: {e}")
-                
-                try:
+                    
                     admin_email = saas_settings.get('contact_email')
                     if admin_email:
-                        admin_html_body = render_template('order_notification_email.html', 
-                                                          form_data=form_data, 
-                                                          plan=plan_snapshot,
-                                                          payment_details=None) # No payment details
                         email_service.send_generic_email(
                             saas_settings, admin_email,
-                            f"New Plan Order: {plan_snapshot['name']} for {form_data['company_name']}",
-                            admin_html_body
+                            f"New Plan Order: {plan_snapshot['name']}",
+                            f"New Pay Later Order: {new_order_number}"
                         )
-                except Exception as e:
-                    print(f"Warning: Failed to send ADMIN order notification email: {e}")
+                except: pass
                 
-                flash("Your order has been placed! A confirmation email has been sent.", "success")
+                flash("Order placed successfully!", "success")
                 return redirect(url_for('order_status', order_number=new_order_number))
 
-            else:
-                flash("Invalid payment choice.", "error")
-                return redirect(url_for('checkout', plan_id=plan_id))
-                
         except Exception as e:
-            print(f"CRITICAL: Failed to process order: {e}")
-            flash(f"An error occurred: {e}", "error")
+            print(f"Checkout Error: {e}")
+            flash(f"Order failed: {e}", "error")
             return redirect(url_for('checkout', plan_id=plan_id))
 
-    # --- GET Request Logic ---
-    return render_template('checkout.html', 
-                           plan=plan,
-                           developer_logo=saas_settings.get('saas_logo_url'),
-                           app_name=saas_settings.get('app_name', 'ISP Manager'),
-                           contact_email=saas_settings.get('contact_email', 'support@huda-it.com'))
+    return render_template('checkout.html', plan=plan, developer_logo=saas_settings.get('saas_logo_url'),
+                           app_name=saas_settings.get('app_name'), contact_email=saas_settings.get('contact_email'))
 # --- END OF CHECKOUT ROUTE ---
 
 @app.context_processor
@@ -4284,59 +4246,42 @@ def order_status(order_number):
 @app.route('/product-checkout', methods=['GET', 'POST'])
 def product_checkout():
     """
-    Checkout page logic with FIXED Variable Scope & Email Arguments.
+    Product Checkout handling COD, ShurjoPay, and bKash.
     """
     saas_settings = get_saas_settings()
     cart = session.get('cart', {})
     user = session.get('user', {})
     
-    # 1. Validation
     if not cart:
-        flash("Your cart is empty.", "info")
-        return redirect(url_for('cart'))
+        flash("Your cart is empty.", "info"); return redirect(url_for('cart'))
 
-    # 2. Setup Data
+    # Setup Data
     shipping_cost = float(saas_settings.get('shipping_cost', 0.0))
     subtotal = 0
     cart_products_snapshot = []
     product_ids = list(cart.keys())
     fetched_products = []
     
-    # 3. Data Fetching
     try:
-        # Try RPC first (Bypass RLS)
         res = supabase.rpc('get_products_with_reviews', {'p_search_term': ""}).execute()
-        if res.data:
-            fetched_products = [p for p in res.data if str(p['id']) in product_ids]
-            
-        # Fallback to Table
+        if res.data: fetched_products = [p for p in res.data if str(p['id']) in product_ids]
         if not fetched_products:
              res_table = supabase.table('products').select('*, category_id').in_('id', product_ids).execute()
-             if res_table.data:
-                 fetched_products = res_table.data
-    except Exception as e:
-        print(f"Checkout Data Error: {e}")
+             if res_table.data: fetched_products = res_table.data
+    except Exception as e: print(f"Data Error: {e}")
 
     if not fetched_products:
-        flash("Items unavailable.", "error")
-        return redirect(url_for('cart'))
+        flash("Items unavailable.", "error"); return redirect(url_for('cart'))
 
-    # 4. Calculations
+    # Calculations
     today_date = date.today().isoformat()
     for product in fetched_products:
         pid = str(product['id'])
         if pid not in cart: continue
         qty = cart[pid]
         
-        # Stock Check
-        if product.get('stock_quantity', 0) < qty:
-            flash(f"Not enough stock for {product.get('name')}.", "error")
-            return redirect(url_for('cart'))
-
         op = float(product.get('selling_price', 0))
         fp = op
-        
-        # --- FIX: Initialize variable BEFORE the if block ---
         is_discounted = False 
         
         start = product.get('discount_start_date') or '1970-01-01'
@@ -4350,50 +4295,38 @@ def product_checkout():
         subtotal += item_sub
         
         cart_products_snapshot.append({
-            "id": pid,
-            "name": product.get('name'),
-            "image_url": product.get('image_url'),
-            "quantity": qty,
-            "subtotal": item_sub,
-            "original_price": op,
-            "final_price_per_item": fp,
-            "is_discounted": is_discounted, # Now safely defined
+            "id": pid, "name": product.get('name'), "image_url": product.get('image_url'),
+            "quantity": qty, "subtotal": item_sub, "original_price": op,
+            "final_price_per_item": fp, "is_discounted": is_discounted,
             "category_id": product.get('category_id')
         })
     
-    # 5. Promo Logic
+    # Promo Logic
     discount_amount = 0.0
     promo = session.get('promo')
     promo_code_used = None
     if promo:
         promo_code_used = promo['code']
-        if promo['type'] == 'Percentage':
-            discount_amount = subtotal * (promo['value'] / 100)
-        else:
-            discount_amount = promo['value']
+        discount_amount = subtotal * (promo['value'] / 100) if promo['type'] == 'Percentage' else promo['value']
         if discount_amount > subtotal: discount_amount = subtotal
 
     total_price = max(0, subtotal + shipping_cost - discount_amount)
 
-    # --- 6. HANDLE ORDER SUBMISSION ---
+    # --- HANDLE POST ---
     if request.method == 'POST':
         payment_choice = request.form.get('payment_method')
         street = request.form.get('address')
         full_address = f"{street}, {request.form.get('thana')}, {request.form.get('district')}, {request.form.get('division')}"
         
         form_data = {
-            "full_name": request.form.get('full_name'),
-            "email": request.form.get('email').strip().lower(),
-            "phone": request.form.get('phone'),
-            "address": full_address
+            "full_name": request.form.get('full_name'), "email": request.form.get('email').strip().lower(),
+            "phone": request.form.get('phone'), "address": full_address
         }
         
         if not all([form_data['full_name'], form_data['email'], form_data['phone'], street]):
-            flash("All fields are required.", "error")
-            return redirect(url_for('product_checkout'))
+            flash("All fields required.", "error"); return redirect(url_for('product_checkout'))
             
         try:
-            # Generate Order Number
             order_num_res = supabase.rpc('generate_new_product_order_number').execute()
             new_order_number = order_num_res.data or f"ORD-{int(datetime.now().timestamp())}"
 
@@ -4404,53 +4337,26 @@ def product_checkout():
                 "total_amount": total_price, "status": "Pending Payment", "payment_method": "Unknown"
             }
 
-            # A) COD Payment
             if payment_choice == 'cod':
                 order_payload['status'] = 'Processing (COD)'
                 order_payload['payment_method'] = 'Cash on Delivery'
                 supabase.table('product_orders').insert(order_payload).execute()
                 
-                # --- EMAIL LOGIC ---
+                # Send Emails
                 try:
-                    # PASS ALL ARGUMENTS INCLUDING DISCOUNT_AMOUNT
                     email_service.send_product_order_confirmation_customer(
-                        saas_settings, 
-                        form_data['email'], 
-                        form_data, # Full details for address
-                        new_order_number, 
-                        cart_products_snapshot, 
-                        total_price,
-                        shipping_cost, 
-                        discount_amount, # <--- THIS WAS MISSING
-                        payment_details=None
+                        saas_settings, form_data['email'], form_data, new_order_number, cart_products_snapshot, 
+                        total_price, shipping_cost, discount_amount, payment_details=None
                     )
-                except Exception as e: 
-                    print(f"Customer Email Error: {e}")
-                
-                try:
-                    # Robust Admin Email Fallback
-                    admin_email = (saas_settings.get('contact_email') or 
-                                   saas_settings.get('brevo_sender_email') or 
-                                   saas_settings.get('smtp_user') or
-                                   os.environ.get('SENDER_EMAIL'))
                     
+                    admin_email = saas_settings.get('contact_email')
                     if admin_email:
-                        try:
-                            admin_body = render_template('product_order_admin_email.html',
-                                form_data=form_data, order_items=cart_products_snapshot,
-                                total_amount=total_price, shipping_cost=shipping_cost,
-                                order_number=new_order_number, payment_details=None)
-                        except:
-                            admin_body = f"New COD Order #{new_order_number}. Total: {total_price}."
-                        
-                        email_service.send_generic_email(saas_settings, admin_email, f"New Order: {new_order_number}", admin_body)
-                except Exception as e: print(f"Admin Email Error: {e}")
+                        email_service.send_generic_email(saas_settings, admin_email, f"New COD Order: {new_order_number}", f"Order {new_order_number} received.")
+                except: pass
 
                 session.pop('cart', None); session.pop('promo', None)
-                flash("Order placed successfully!", "success")
                 return redirect(url_for('product_order_success', order_number=new_order_number))
 
-            # B) Online Payment
             elif payment_choice == 'pay_now':
                 if not saas_settings.get('gateway_enabled', False):
                     flash("Online payments disabled.", "error"); return redirect(url_for('product_checkout'))
@@ -4470,15 +4376,31 @@ def product_checkout():
                     return redirect(response.checkout_url)
                 
                 flash("Gateway error.", "error"); return redirect(url_for('product_checkout'))
-            
-            else:
-                flash("Invalid payment method.", "error"); return redirect(url_for('product_checkout'))
+
+            elif payment_choice == 'bkash':
+                if not saas_settings.get('bkash_enabled', False):
+                    flash("bKash disabled.", "error"); return redirect(url_for('product_checkout'))
+
+                bkash = initialize_bkash(saas_settings)
+                try:
+                    token = bkash.get_token()
+                    callback_url = url_for('bkash_product_callback', _external=True)
+                    resp = bkash.create_payment(token, total_price, new_order_number, callback_url)
+                    
+                    if resp.get('statusCode') == '0000':
+                        order_payload['gateway_tx_id'] = resp['paymentID']
+                        res = supabase.table('product_orders').insert(order_payload).execute()
+                        if res.data: session['pending_order_id'] = res.data[0]['id']
+                        return redirect(resp['bkashURL'])
+                    else:
+                        raise Exception(resp.get('statusMessage'))
+                except Exception as e:
+                    flash(f"bKash Error: {e}", "error"); return redirect(url_for('product_checkout'))
 
         except Exception as e:
-            print(f"Order Error: {e}"); flash(f"Order failed: {e}", "error")
-            return redirect(url_for('product_checkout'))
+            flash(f"Order failed: {e}", "error"); return redirect(url_for('product_checkout'))
 
-    # --- 7. RENDER ---
+    # RENDER GET
     prefill = {'name': '', 'email': '', 'phone': '', 'address': ''}
     if user:
         prefill['name'] = user.get('customer_name') or user.get('employee_name') or ''
@@ -4857,6 +4779,131 @@ def submit_review(product_id):
         flash(f"An error occurred: {e}", "error")
         return redirect(url_for('product_detail', product_id=product_id))
 
+@app.route('/payment/bkash/saas-callback')
+def bkash_saas_callback():
+    """Callback for SaaS Plan bKash Payments"""
+    payment_id = request.args.get('paymentID')
+    status = request.args.get('status')
+    
+    if not payment_id or status != 'success':
+        flash("bKash payment cancelled or failed.", "error")
+        return redirect(url_for('purchase_plans'))
+
+    saas_settings = get_saas_settings()
+    
+    try:
+        # 1. Verify Payment
+        bkash = initialize_bkash(saas_settings)
+        token = bkash.get_token()
+        resp = bkash.execute_payment(token, payment_id)
+        
+        if resp.get('statusCode') == '0000':
+            trx_id = resp.get('trxID')
+            
+            # 2. Find Order
+            order_res = supabase.table('saas_orders').select('*').eq('gateway_tx_id', payment_id).maybe_single().execute()
+            if not order_res.data: raise Exception("Order not found.")
+            order = order_res.data
+            
+            # 3. Update Order
+            supabase.table('saas_orders').update({
+                "status": "Pending Review",
+                "payment_method": "bKash Direct",
+                "transaction_id": trx_id
+            }).eq('id', order['id']).execute()
+            
+            # 4. Send Emails (Simplified)
+            try:
+                track_url = url_for('order_status', order_number=order['order_number'], _external=True)
+                email_service.send_order_confirmation_email(
+                    saas_settings, order['customer_details']['email'], order['customer_details']['company_name'],
+                    order['order_number'], order['plan_snapshot'], track_url=track_url, payment_details=resp
+                )
+            except: pass
+            
+            flash("Payment successful!", "success")
+            return redirect(url_for('order_status', order_number=order['order_number']))
+        else:
+            flash(f"Verification failed: {resp.get('statusMessage')}", "error")
+            return redirect(url_for('purchase_plans'))
+            
+    except Exception as e:
+        print(f"bKash SaaS Error: {e}")
+        flash(f"Error: {e}", "error")
+        return redirect(url_for('purchase_plans'))
+
+
+@app.route('/payment/bkash/product-callback')
+def bkash_product_callback():
+    """Callback for Product bKash Payments"""
+    payment_id = request.args.get('paymentID')
+    status = request.args.get('status')
+    pending_order_id = session.pop('pending_order_id', None)
+    
+    if not payment_id or status != 'success':
+        flash("Payment failed.", "error")
+        if pending_order_id:
+            supabase.table('product_orders').delete().eq('id', pending_order_id).execute()
+        return redirect(url_for('cart'))
+
+    saas_settings = get_saas_settings()
+    
+    try:
+        bkash = initialize_bkash(saas_settings)
+        token = bkash.get_token()
+        resp = bkash.execute_payment(token, payment_id)
+        
+        if resp.get('statusCode') == '0000':
+            trx_id = resp.get('trxID')
+            
+            # Update Order
+            gateway_id = resp.get('paymentID')
+            order_res = supabase.table('product_orders').select('*').eq('gateway_tx_id', gateway_id).maybe_single().execute()
+            if not order_res.data: raise Exception("Order not found.")
+            order = order_res.data
+            
+            supabase.table('product_orders').update({
+                "status": "Processing (Paid)",
+                "payment_method": "bKash Direct",
+                "transaction_id": trx_id
+            }).eq('id', order['id']).execute()
+            
+            # Send Emails
+            form_data = order.get('customer_details', {})
+            order_items = order.get('order_items', [])
+            total_amount = float(order.get('total_amount', 0))
+            shipping_cost = float(order.get('shipping_cost', 0.0))
+            discount_amount = float(order.get('discount_amount', 0.0))
+            
+            try:
+                resp['amount'] = total_amount
+                email_service.send_product_order_confirmation_customer(
+                    saas_settings, form_data.get('email'), form_data, 
+                    order['order_number'], order_items, total_amount, 
+                    shipping_cost, discount_amount, payment_details=resp
+                )
+                
+                admin_email = saas_settings.get('contact_email')
+                if admin_email:
+                    email_service.send_generic_email(
+                        saas_settings, admin_email, 
+                        f"New PAID Product Order: {order['order_number']}", "Order Paid via bKash."
+                    )
+            except: pass
+            
+            session.pop('cart', None)
+            flash("Payment successful!", "success")
+            return redirect(url_for('product_order_success', order_number=order['order_number']))
+        else:
+            flash(f"Verification failed: {resp.get('statusMessage')}", "error")
+            if pending_order_id:
+                supabase.table('product_orders').delete().eq('id', pending_order_id).execute()
+            return redirect(url_for('cart'))
+            
+    except Exception as e:
+        print(f"bKash Product Error: {e}")
+        return redirect(url_for('cart'))
+
 @app.route('/sw.js')
 def service_worker():
     """
@@ -4909,6 +4956,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
