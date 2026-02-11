@@ -138,7 +138,7 @@ def get_shurjopay_config(saas_settings):
 def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     """
     Initializes and returns a ShurjopayPlugin instance.
-    FIXED: Uses 'api_url'.
+    FIXED: Removed logger access which caused the crash.
     """
     is_sandbox = saas_settings.get('gateway_sandbox_enabled', True)
     
@@ -155,7 +155,7 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     sp_config = ShurjoPayConfigModel(
         username=saas_settings.get('gateway_store_id'),
         password=saas_settings.get('gateway_store_password'),
-        api_url=api_endpoint,  # <--- RENAMED to 'api_url'
+        api_url=api_endpoint,
         prefix=saas_settings.get('gateway_prefix'),
         return_url=return_url,
         cancel_url=cancel_url
@@ -163,9 +163,10 @@ def initialize_shurjopay(saas_settings, return_url=None, cancel_url=None):
     
     shurjopay = ShurjopayPlugin(sp_config)
     
-    shurjopay.logger.handlers = []
-    shurjopay.logger.addHandler(logging.NullHandler())
-    shurjopay.logger.propagate = False
+    # REMOVED LOGGER LINES THAT CAUSED CRASH
+    # shurjopay.logger.handlers = []
+    # shurjopay.logger.addHandler(logging.NullHandler())
+    # shurjopay.logger.propagate = False
     
     return shurjopay
 
@@ -4908,6 +4909,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
