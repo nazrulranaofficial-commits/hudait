@@ -258,19 +258,119 @@ def send_order_confirmation_email(saas_settings, to_email, company_name, order_n
     html_body = _get_html_template(saas_settings, title, preheader, body)
     return _send_email(saas_settings, to_email, title, html_body)
 
-def send_product_order_confirmation_customer(saas_settings, to_email, customer_name, order_number, order_items, total_amount, shipping_cost, payment_details=None):
-    title = f"Order #{order_number} Confirmed"
-    preheader = "Your product order has been received."
-    
-    body = f"""
-    <h2 style="color: #2d3748;">Order Confirmed</h2>
-    <p>Hi {customer_name},</p>
-    <p>We have received your order <b>#{order_number}</b>.</p>
-    <p><b>Total:</b> {total_amount} BDT</p>
-    <p>We will notify you when it ships.</p>
+def send_product_order_confirmation_customer(saas_settings, to_email, customer_details, order_number, order_items, total_amount, shipping_cost, discount_amount, payment_details=None):
     """
-    html_body = _get_html_template(saas_settings, title, preheader, body)
-    return _send_email(saas_settings, to_email, title, html_body)
+    Sends a Professional HTML Receipt to the Customer.
+    Includes: Address, Phone, Item List, Payment Status, and Tracking Link.
+    """
+    title = f"Order Confirmation #{order_number}"
+    preheader = f"Your order #{order_number} has been placed successfully."
+    
+    # --- 1. Dynamic Status & Payment Info ---
+    if payment_details:
+        payment_method = payment_details.get('method', 'Online Payment')
+        payment_badge = '<span style="background-color: #def7ec; color: #03543f; padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: bold; border: 1px solid #bcf0da;">PAID</span>'
+        payment_row_color = "#38A169" # Green
+    else:
+        payment_method = "Cash on Delivery"
+        payment_badge = '<span style="background-color: #fff8f1; color: #9c4221; padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: bold; border: 1px solid #fce9d8;">PENDING PAYMENT</span>'
+        payment_row_color = "#D97706" # Orange
+
+    # --- 2. Tracking Link ---
+    track_url = f"{WEB_PORTAL_URL}/product-order-status/{order_number}"
+
+    # --- 3. Build Items Table Rows ---
+    items_html = ""
+    for item in order_items:
+        # Check if item has an image, else use placeholder
+        img_src = item.get('image_url') or "https://via.placeholder.com/60"
+        
+        items_html += f"""
+        <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #eee; width: 60px;">
+                <img src="{img_src}" alt="Product" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #eee;">
+            </td>
+            <td style="padding: 12px 10px; border-bottom: 1px solid #eee;">
+                <p style="margin: 0; font-weight: 600; color: #333;">{item.get('name')}</p>
+                <p style="margin: 2px 0 0 0; color: #888; font-size: 12px;">Unit Price: {item.get('final_price_per_item', 0)} BDT</p>
+            </td>
+            <td style="padding: 12px 10px; border-bottom: 1px solid #eee; text-align: center;">x{item.get('quantity')}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">{item.get('subtotal')} BDT</td>
+        </tr>
+        """
+
+    # --- 4. Professional HTML Body ---
+    body = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        
+        <h2 style="color: #2d3748; margin-top: 0;">Order Confirmed!</h2>
+        <p style="color: #4a5568; font-size: 16px;">Hi {customer_details.get('full_name')},</p>
+        <p style="color: #4a5568;">We're getting your order ready to be shipped. We will notify you when it has been sent.</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{track_url}" style="background-color: #5A67D8; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(90, 103, 216, 0.3);">
+                Track Your Order
+            </a>
+            <p style="margin-top: 10px; font-size: 13px; color: #718096;">or visit: <a href="{track_url}" style="color: #5A67D8;">{track_url}</a></p>
+        </div>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 25px; background-color: #f7fafc; border-radius: 8px; padding: 15px;">
+            <tr>
+                <td width="50%" valign="top" style="padding-right: 15px;">
+                    <p style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; font-weight: bold;">Order Details</p>
+                    <p style="margin: 0 0 5px 0; color: #2d3748;"><b>Order #:</b> {order_number}</p>
+                    <p style="margin: 0 0 5px 0; color: #2d3748;"><b>Date:</b> {datetime.datetime.now().strftime('%d %b, %Y')}</p>
+                    <p style="margin: 0; color: #2d3748;"><b>Payment:</b> {payment_method}</p>
+                    <div style="margin-top: 8px;">{payment_badge}</div>
+                </td>
+                <td width="50%" valign="top" style="border-left: 1px solid #e2e8f0; padding-left: 15px;">
+                    <p style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; font-weight: bold;">Customer Info</p>
+                    <p style="margin: 0 0 5px 0; color: #2d3748;"><b>{customer_details.get('full_name')}</b></p>
+                    <p style="margin: 0 0 5px 0; color: #4a5568; font-size: 14px;">📞 {customer_details.get('phone')}</p>
+                    <p style="margin: 0; color: #4a5568; font-size: 14px;">📍 {customer_details.get('address')}</p>
+                </td>
+            </tr>
+        </table>
+
+        <h3 style="color: #2d3748; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-top: 30px;">Order Summary</h3>
+        <table width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th align="left" style="padding: 10px 0; color: #718096; font-size: 12px; text-transform: uppercase;">Item</th>
+                    <th align="left" style="padding: 10px 10px; color: #718096; font-size: 12px; text-transform: uppercase;">Details</th>
+                    <th align="center" style="padding: 10px 10px; color: #718096; font-size: 12px; text-transform: uppercase;">Qty</th>
+                    <th align="right" style="padding: 10px 0; color: #718096; font-size: 12px; text-transform: uppercase;">Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {items_html}
+            </tbody>
+        </table>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px;">
+            <tr>
+                <td align="right" style="padding: 5px 0; color: #718096;">Subtotal:</td>
+                <td align="right" style="padding: 5px 0; width: 100px; color: #2d3748; font-weight: 500;">{(total_amount - shipping_cost + discount_amount):.2f} BDT</td>
+            </tr>
+            <tr>
+                <td align="right" style="padding: 5px 0; color: #718096;">Shipping:</td>
+                <td align="right" style="padding: 5px 0; color: #2d3748; font-weight: 500;">{shipping_cost:.2f} BDT</td>
+            </tr>
+            <tr>
+                <td align="right" style="padding: 5px 0; color: #e53e3e;">Discount:</td>
+                <td align="right" style="padding: 5px 0; color: #e53e3e; font-weight: 500;">-{discount_amount:.2f} BDT</td>
+            </tr>
+            <tr>
+                <td align="right" style="padding: 10px 0; border-top: 2px solid #edf2f7; color: #2d3748; font-size: 16px; font-weight: bold;">Total:</td>
+                <td align="right" style="padding: 10px 0; border-top: 2px solid #edf2f7; color: #5A67D8; font-size: 18px; font-weight: bold;">{total_amount:.2f} BDT</td>
+            </tr>
+        </table>
+
+    </div>
+    """
+    
+    html = _get_html_template(saas_settings, title, preheader, body)
+    return _send_email(saas_settings, to_email, title, html)
 
 def send_service_reactivated_email(customer_email, customer_name, company_id):
     company_details = get_isp_company_details_from_db(company_id)
@@ -284,3 +384,4 @@ def send_service_reactivated_email(customer_email, customer_name, company_id):
     """
     html_body = _get_html_template(company_details, title, preheader, body)
     return _send_email(company_details, customer_email, title, html_body)
+
