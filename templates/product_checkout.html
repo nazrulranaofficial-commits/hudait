@@ -13,6 +13,7 @@
             --color-success: #10b981; --color-danger: #ef4444;
             --color-text-dark: #1a202c; --color-text-light: #64748b;
             --color-border: #e2e8f0; --color-bg-light: #f8fafc;
+            --color-bkash: #E2136E; /* bKash Pink */
         }
         body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f5f5f5; color: var(--color-text-light); }
         .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1rem; box-sizing: border-box; }
@@ -57,10 +58,16 @@
         .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.1); }
         
         .btn-pay { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 1rem; border: none; cursor: pointer; margin-bottom: 1rem; transition: all 0.2s; }
+        
         .btn-cod { background: #f8fafc; color: var(--color-text-dark); border: 1px solid var(--color-border); }
         .btn-cod:hover { background: #e2e8f0; }
+        
         .btn-online { background: var(--color-primary); color: white; }
         .btn-online:hover { background: var(--color-primary-dark); }
+
+        /* NEW: bKash Button */
+        .btn-bkash { background: var(--color-bkash); color: white; }
+        .btn-bkash:hover { background: #C2105E; }
 
         .summary-item { display: flex; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9; }
         .summary-img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; border: 1px solid var(--color-border); }
@@ -180,8 +187,12 @@
                     </div>
                     
                     <div class="section-title" style="margin-top: 2rem;">Payment Method</div>
+                    
                     <button type="submit" name="payment_method" value="cod" class="btn-pay btn-cod">
                         <i class="fas fa-truck"></i> Cash on Delivery
+                    </button>
+                    <button type="submit" name="payment_method" value="bkash" class="btn-pay btn-bkash">
+                        <i class="fas fa-mobile-alt"></i> bKash
                     </button>
                     <button type="submit" name="payment_method" value="pay_now" class="btn-pay btn-online">
                         <i class="fas fa-credit-card"></i> Pay Now
