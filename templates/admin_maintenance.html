@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Control | ISP Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        .status-card {
+            border: none; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: all 0.2s;
+            height: 100%;
+        }
+        .status-card:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        
+        .status-active { border-left: 5px solid #10b981; } /* Green */
+        .status-maintenance { border-left: 5px solid #f59e0b; } /* Orange */
+        
+        .timeline { position: relative; padding-left: 20px; }
+        .timeline-item {
+            padding-left: 30px; position: relative; border-left: 2px solid #e5e7eb; padding-bottom: 25px;
+        }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -6px; top: 0;
+            width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;
+        }
+        .timeline-date { font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 4px; }
+        .timeline-title { font-weight: 600; color: #1f2937; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="bi bi-tools text-primary me-2"></i>System Maintenance</h2>
+                <p class="text-muted">Manage scheduled downtime and view live system health.</p>
+            </div>
+            <div>
+                <a href="/employee/dashboard" class="btn btn-outline-secondary me-2">Back to Dashboard</a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMaintenanceModal">
+                    <i class="bi bi-plus-lg me-2"></i>Schedule Maintenance
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            {% for service in services %}
+            <div class="col-md-3">
+                <div class="card status-card p-4 {{ 'status-maintenance' if service.is_maintenance else 'status-active' }}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="fw-bold text-uppercase text-muted small mb-1">{{ service.name }}</h6>
+                            <h5 class="fw-bold mb-0 {{ 'text-warning' if service.is_maintenance else 'text-success' }}">
+                                {{ 'Under Maintenance' if service.is_maintenance else 'Operational' }}
+                            </h5>
+                        </div>
+                        <i class="bi {{ 'bi-cone-striped text-warning' if service.is_maintenance else 'bi-check-circle-fill text-success' }} fs-3"></i>
+                    </div>
+                    {% if service.is_maintenance %}
+                    <div class="mt-3 small text-muted bg-light p-2 rounded">
+                        <i class="bi bi-clock me-1"></i> End: {{ service.end_time }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Maintenance Log</h5>
+                <span class="badge bg-secondary">{{ logs|length }} Records</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="timeline">
+                    {% for log in logs %}
+                    <div class="timeline-item">
+                        <div class="timeline-date">
+                            {{ log.start_time }} <i class="bi bi-arrow-right mx-1"></i> {{ log.end_time }}
+                        </div>
+                        <div class="timeline-title d-flex align-items-center gap-2">
+                            {{ log.service_name }}
+                            {% if log.status == 'In Progress' %}
+                                <span class="badge bg-warning text-dark">In Progress</span>
+                            {% elif log.status == 'Scheduled' %}
+                                <span class="badge bg-primary">Scheduled</span>
+                            {% else %}
+                                <span class="badge bg-success">Completed</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted small mb-2 mt-1">{{ log.description }}</p>
+                        
+                        {% if log.status == 'In Progress' or log.status == 'Scheduled' %}
+                            <a href="/admin/maintenance/complete/{{ log.id }}" class="btn btn-sm btn-outline-success py-0" style="font-size: 12px;">Mark as Complete</a>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        <p class="text-center text-muted py-4">No maintenance history found.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addMaintenanceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form action="/admin/maintenance/add" method="POST" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Schedule New Maintenance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Target Service</label>
+                        <select name="service_name" class="form-select">
+                            <option value="Customer Portal">Customer Portal</option>
+                            <option value="Admin Panel">Admin Panel</option>
+                            <option value="API Gateway">API Gateway</option>
+                            <option value="Database">Database System</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Start Time</label>
+                            <input type="datetime-local" name="start_time" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">End Time (Est.)</label>
+                            <input type="datetime-local" name="end_time" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description / Reason</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="e.g., Security patch update..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Schedule Maintenance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
