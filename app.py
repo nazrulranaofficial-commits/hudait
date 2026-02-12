@@ -5131,6 +5131,68 @@ def complete_maintenance(log_id):
         flash(f"Error: {e}", "error")
         
     return redirect(url_for('admin_maintenance_page'))
+
+# --- PUBLIC STATUS PAGE ROUTE ---
+@app.route('/status')
+def public_status_page():
+    """
+    Public-facing status page.
+    Shows live system health without requiring login.
+    """
+    try:
+        # 1. Fetch Logs (Public Read Policy allows this)
+        # Limit to last 10 entries for cleanliness
+        logs_res = supabase.table('maintenance_logs').select('*').order('start_time', desc=True).limit(10).execute()
+        logs = logs_res.data or []
+
+        # 2. Define Services
+        services_status = {
+            "Customer Portal": {"is_maintenance": False, "end_time": ""},
+            "Admin Panel": {"is_maintenance": False, "end_time": ""},
+            "API Gateway": {"is_maintenance": False, "end_time": ""},
+            "Database System": {"is_maintenance": False, "end_time": ""}
+        }
+
+        # 3. Calculate Live Status
+        now = datetime.now(timezone.utc)
+        systems_down_count = 0
+        
+        for log in logs:
+            try:
+                # Handle ISO timestamps with potential 'Z' issue
+                start_str = log['start_time'].replace('Z', '+00:00')
+                end_str = log['end_time'].replace('Z', '+00:00')
+                
+                start = datetime.fromisoformat(start_str)
+                end = datetime.fromisoformat(end_str)
+                
+                # Check active maintenance
+                if log['status'] in ['In Progress', 'Scheduled']:
+                    if log['status'] == 'In Progress' or (start <= now <= end):
+                        s_name = log['service_name']
+                        if s_name in services_status:
+                            # Only count as down if not already marked
+                            if not services_status[s_name]['is_maintenance']:
+                                services_status[s_name]['is_maintenance'] = True
+                                services_status[s_name]['end_time'] = end.strftime("%d %b, %H:%M")
+                                systems_down_count += 1
+                                
+                # Format dates for display
+                log['start_time'] = start.strftime("%b %d, %H:%M")
+            except:
+                continue
+
+        # Prepare list for template
+        services_list = [{"name": k, **v} for k, v in services_status.items()]
+
+        return render_template('public_status.html', 
+                             services=services_list, 
+                             logs=logs,
+                             systems_down=systems_down_count)
+        
+    except Exception as e:
+        print(f"Status Page Error: {e}")
+        return "System Status Unavailable", 500
 # --- ADD THIS NEAR YOUR OTHER ROUTES ---
 @app.route('/health')
 def health_check():
@@ -5173,6 +5235,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
