@@ -5025,6 +5025,112 @@ def admin_health_page():
     }
 
     return render_template('admin_health.html', health=health_data)
+
+# --- ADD TO app.py ---
+
+@app.route('/admin/maintenance')
+@employee_login_required
+def admin_maintenance_page():
+    """
+    Displays the maintenance dashboard.
+    Calculates live status based on DB logs.
+    """
+    try:
+        # 1. Fetch Logs (Sorted by Start Time)
+        logs_res = supabase.table('maintenance_logs').select('*').order('start_time', desc=True).execute()
+        logs = logs_res.data or []
+
+        # 2. Define Default Service Status
+        services_status = {
+            "Customer Portal": {"is_maintenance": False, "end_time": ""},
+            "Admin Panel": {"is_maintenance": False, "end_time": ""},
+            "API Gateway": {"is_maintenance": False, "end_time": ""},
+            "Database System": {"is_maintenance": False, "end_time": ""}
+        }
+
+        # 3. Calculate Live Status
+        now = datetime.now(timezone.utc)
+        
+        for log in logs:
+            # Parse dates (handle ISO format)
+            try:
+                start = datetime.fromisoformat(log['start_time'].replace('Z', '+00:00'))
+                end = datetime.fromisoformat(log['end_time'].replace('Z', '+00:00'))
+                
+                # Check if this log entry is currently active
+                if log['status'] in ['In Progress', 'Scheduled']:
+                    # Logic: If status is 'In Progress' OR (Scheduled AND current time is within window)
+                    if log['status'] == 'In Progress' or (start <= now <= end):
+                        s_name = log['service_name']
+                        if s_name in services_status:
+                            services_status[s_name]['is_maintenance'] = True
+                            services_status[s_name]['end_time'] = end.strftime("%d %b, %H:%M")
+                            
+                            # Format for display in table too
+                            log['display_class'] = 'table-warning'
+            except:
+                pass # Skip date parse errors
+
+        # Convert dict to list for easier template looping
+        services_list = [{"name": k, **v} for k, v in services_status.items()]
+
+        return render_template('admin_maintenance.html', services=services_list, logs=logs)
+        
+    except Exception as e:
+        print(f"Maintenance Page Error: {e}")
+        flash("Error loading maintenance data.", "error")
+        return redirect(url_for('employee_dashboard'))
+
+@app.route('/admin/maintenance/add', methods=['POST'])
+@employee_login_required
+def add_maintenance():
+    try:
+        # Get form data
+        s_name = request.form['service_name']
+        start = request.form['start_time']
+        end = request.form['end_time']
+        desc = request.form['description']
+        
+        # Determine status automatically
+        # If start time is very close to NOW, set as 'In Progress', else 'Scheduled'
+        start_dt = datetime.fromisoformat(start)
+        status = "Scheduled"
+        if start_dt <= datetime.now() + timedelta(minutes=5):
+            status = "In Progress"
+
+        data = {
+            "service_name": s_name,
+            "start_time": start, # Supabase handles ISO string conversion well
+            "end_time": end,
+            "description": desc,
+            "status": status,
+            # "created_by": session.get('user', {}).get('id') # Optional: track who created it
+        }
+
+        supabase.table('maintenance_logs').insert(data).execute()
+        flash(f"Maintenance for {s_name} scheduled successfully.", "success")
+        
+    except Exception as e:
+        print(f"Add Maintenance Error: {e}")
+        flash(f"Failed to schedule: {str(e)}", "error")
+    
+    return redirect(url_for('admin_maintenance_page'))
+
+@app.route('/admin/maintenance/complete/<log_id>')
+@employee_login_required
+def complete_maintenance(log_id):
+    """Mark a maintenance task as completed immediately."""
+    try:
+        supabase.table('maintenance_logs').update({
+            'status': 'Completed',
+            'end_time': datetime.now(timezone.utc).isoformat() # Update end time to actual finish time
+        }).eq('id', log_id).execute()
+        
+        flash("Maintenance marked as completed.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+        
+    return redirect(url_for('admin_maintenance_page'))
 # --- ADD THIS NEAR YOUR OTHER ROUTES ---
 @app.route('/health')
 def health_check():
@@ -5067,6 +5173,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
