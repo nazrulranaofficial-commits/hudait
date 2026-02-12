@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Health | ISP Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .health-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .health-card:hover { transform: translateY(-5px); }
+        .status-indicator {
+            width: 15px; height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-online { background-color: #10b981; box-shadow: 0 0 10px #10b98180; }
+        .status-offline { background-color: #ef4444; box-shadow: 0 0 10px #ef444480; }
+        .status-warning { background-color: #f59e0b; }
+        .metric-value { font-size: 24px; font-weight: 700; color: #1f2937; }
+        .metric-label { font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+        .refresh-btn { position: fixed; bottom: 30px; right: 30px; border-radius: 50%; width: 60px; height: 60px; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark mb-1"><i class="bi bi-heart-pulse-fill text-danger me-2"></i>System Health</h2>
+                <p class="text-muted">Real-time operational status of your ISP Portal.</p>
+            </div>
+            <a href="/employee/dashboard" class="btn btn-outline-secondary">Back to Dashboard</a>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card health-card p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="status-indicator {{ 'status-online' if health.database.status else 'status-offline' }}"></span>
+                            <span class="fw-bold">{{ 'Operational' if health.database.status else 'Issues Detected' }}</span>
+                        </div>
+                        <i class="bi bi-database text-primary fs-4"></i>
+                    </div>
+                    <div class="metric-value">{{ health.database.latency }} ms</div>
+                    <div class="metric-label">Database Latency</div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card health-card p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="status-indicator {{ 'status-online' if health.smtp.configured else 'status-warning' }}"></span>
+                            <span class="fw-bold">{{ 'Configured' if health.smtp.configured else 'Not Configured' }}</span>
+                        </div>
+                        <i class="bi bi-envelope text-info fs-4"></i>
+                    </div>
+                    <div class="metric-value">{{ 'Yes' if health.smtp.configured else 'No' }}</div>
+                    <div class="metric-label">SMTP Credentials</div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card health-card p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="status-indicator status-online"></span>
+                            <span class="fw-bold">Connected</span>
+                        </div>
+                        <i class="bi bi-cloud-check text-success fs-4"></i>
+                    </div>
+                    <div class="metric-value">Supabase</div>
+                    <div class="metric-label">File Storage</div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card health-card p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="status-indicator {{ 'status-online' if health.gateways.active_count > 0 else 'status-warning' }}"></span>
+                            <span class="fw-bold">{{ health.gateways.active_count }} Active</span>
+                        </div>
+                        <i class="bi bi-credit-card text-warning fs-4"></i>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        {% if health.gateways.bkash %}
+                            <span class="badge bg-danger">bKash</span>
+                        {% endif %}
+                        {% if health.gateways.shurjopay %}
+                            <span class="badge bg-warning text-dark">ShurjoPay</span>
+                        {% endif %}
+                        {% if health.gateways.active_count == 0 %}
+                            <span class="text-muted small">No gateways enabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="metric-label mt-2">Payment Gateways</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card health-card mt-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold">Server Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted" width="200">Server Time (UTC)</td>
+                            <td class="fw-bold">{{ health.system.time }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Python Version</td>
+                            <td>{{ health.system.python_version }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Environment</td>
+                            <td><span class="badge bg-secondary">{{ health.system.env }}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <a href="{{ url_for('admin_health_page') }}" class="btn btn-primary refresh-btn d-flex justify-content-center align-items-center text-white text-decoration-none">
+        <i class="bi bi-arrow-clockwise"></i>
+    </a>
+</body>
+</html>
