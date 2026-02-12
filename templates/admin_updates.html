@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Update Manager | ISP Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>body { background: #f8f9fa; font-family: 'Inter', sans-serif; }</style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold"><i class="bi bi-cloud-arrow-up-fill text-primary me-2"></i>App Update Center</h2>
+            <a href="/employee/dashboard" class="btn btn-outline-secondary">Back to Dashboard</a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold py-3">🚀 Release New Version</div>
+                    <div class="card-body">
+                        <form action="/admin/updates/release" method="POST">
+                            <div class="mb-3">
+                                <label class="form-label">Version Tag (e.g., 1.0.5)</label>
+                                <input type="text" name="version" class="form-control" placeholder="1.0.5" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Build Number (Integer)</label>
+                                <input type="number" name="build_number" class="form-control" placeholder="105" required>
+                                <div class="form-text">Must be higher than previous.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Download URL (.exe link)</label>
+                                <input type="url" name="download_url" class="form-control" placeholder="https://..." required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Release Notes</label>
+                                <textarea name="notes" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="is_mandatory">
+                                <label class="form-check-label">Force Mandatory Update</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Publish Release</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold py-3">📜 Version History</div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Build</th>
+                                    <th>Notes</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for release in releases %}
+                                <tr>
+                                    <td class="fw-bold text-primary">{{ release.version }}</td>
+                                    <td>{{ release.build_number }}</td>
+                                    <td>{{ release.release_notes }}</td>
+                                    <td class="small text-muted">{{ release.created_at[:10] }}</td>
+                                    <td>
+                                        {% if release.is_mandatory %}
+                                            <span class="badge bg-danger">Mandatory</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Optional</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="5" class="text-center py-4">No releases found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
