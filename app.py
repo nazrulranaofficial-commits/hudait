@@ -4964,6 +4964,67 @@ def bkash_admin_callback():                  # <--- CHANGED NAME
     except Exception as e:
         print(f"Admin Callback Error: {e}")
         return render_template('admin_payment_failed.html', error_message=str(e))
+
+# --- ADD THIS TO app.py ---
+
+@app.route('/admin/health')
+@employee_login_required  # Protect this page!
+def admin_health_page():
+    """
+    Visual Health Dashboard for Admins.
+    Checks DB latency, SMTP config, and Gateway status.
+    """
+    import time
+    import sys
+    import os
+    
+    health_data = {
+        "database": {"status": False, "latency": 0},
+        "smtp": {"configured": False},
+        "gateways": {"bkash": False, "shurjopay": False, "active_count": 0},
+        "system": {}
+    }
+
+    # 1. Database Check (Latency)
+    start_time = time.time()
+    try:
+        # Simple lightweight query
+        supabase.table('saas_settings').select('id', count='exact').limit(1).execute()
+        latency = (time.time() - start_time) * 1000 # Convert to ms
+        health_data['database']['status'] = True
+        health_data['database']['latency'] = round(latency, 2)
+    except Exception as e:
+        print(f"Health Check DB Error: {e}")
+        health_data['database']['status'] = False
+        health_data['database']['latency'] = "Err"
+
+    # 2. SMTP Check (Configuration existence)
+    # We check environment variables or settings from DB
+    smtp_host = os.environ.get('SMTP_HOST')
+    smtp_user = os.environ.get('SMTP_USER')
+    if smtp_host and smtp_user:
+        health_data['smtp']['configured'] = True
+
+    # 3. Gateway Check
+    try:
+        settings = get_saas_settings()
+        bkash_on = settings.get('bkash_enabled', False)
+        shurjo_on = settings.get('gateway_enabled', False) # ShurjoPay uses 'gateway_enabled'
+        
+        health_data['gateways']['bkash'] = bkash_on
+        health_data['gateways']['shurjopay'] = shurjo_on
+        health_data['gateways']['active_count'] = sum([1 for x in [bkash_on, shurjo_on] if x])
+    except:
+        pass
+
+    # 4. System Info
+    health_data['system'] = {
+        "time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "python_version": sys.version.split()[0],
+        "env": "Production" if os.environ.get("FLASK_DEBUG") != '1' else "Debug/Dev"
+    }
+
+    return render_template('admin_health.html', health=health_data)
 # --- ADD THIS NEAR YOUR OTHER ROUTES ---
 @app.route('/health')
 def health_check():
@@ -5006,6 +5067,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
