@@ -5193,6 +5193,59 @@ def public_status_page():
     except Exception as e:
         print(f"Status Page Error: {e}")
         return "System Status Unavailable", 500
+
+# --- UPDATE MANAGEMENT ROUTES ---
+
+@app.route('/admin/updates')
+@employee_login_required
+def admin_updates_page():
+    """Admin page to manage app versions."""
+    try:
+        res = supabase.table('app_releases').select('*').order('build_number', desc=True).execute()
+        return render_template('admin_updates.html', releases=res.data)
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+        return redirect(url_for('employee_dashboard'))
+
+@app.route('/admin/updates/release', methods=['POST'])
+@employee_login_required
+def release_update():
+    """Publish a new version."""
+    try:
+        data = {
+            "version": request.form['version'],
+            "build_number": int(request.form['build_number']),
+            "download_url": request.form['download_url'],
+            "release_notes": request.form['notes'],
+            "is_mandatory": 'is_mandatory' in request.form
+        }
+        supabase.table('app_releases').insert(data).execute()
+        flash("New version released successfully!", "success")
+    except Exception as e:
+        flash(f"Failed to release: {e}", "error")
+    return redirect(url_for('admin_updates_page'))
+
+# --- API FOR DESKTOP APP ---
+@app.route('/api/latest-version')
+def get_latest_version():
+    """
+    API endpoint for the Desktop App to check for updates.
+    Returns JSON with the latest version info.
+    """
+    try:
+        # Get the single entry with the highest build number
+        res = supabase.table('app_releases')\
+            .select('*')\
+            .order('build_number', desc=True)\
+            .limit(1)\
+            .execute()
+            
+        if res.data:
+            return jsonify(res.data[0])
+        else:
+            return jsonify({}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 # --- ADD THIS NEAR YOUR OTHER ROUTES ---
 @app.route('/health')
 def health_check():
@@ -5235,6 +5288,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
