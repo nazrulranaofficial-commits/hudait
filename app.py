@@ -4915,6 +4915,55 @@ def service_worker():
     return response
 # In your app.py
 
+# --- RENAMED ROUTE FOR ADMIN APP (Renders HTML) ---
+@app.route('/payment/bkash/admin-callback')  # <--- CHANGED URL
+def bkash_admin_callback():                  # <--- CHANGED NAME
+    """
+    Callback specifically for the Desktop ISP Admin App.
+    Renders static HTML success/fail pages instead of redirecting.
+    """
+    payment_id = request.args.get('paymentID')
+    status = request.args.get('status')
+    
+    # 1. Handle Immediate Cancellation/Failure
+    if not payment_id or status != 'success':
+        return render_template('admin_payment_failed.html', error_message="Payment process was cancelled or failed.")
+
+    saas_settings = get_saas_settings()
+    
+    try:
+        # 2. Verify Payment
+        bkash = initialize_bkash(saas_settings)
+        token = bkash.get_token()
+        
+        # Execute
+        resp = bkash.execute_payment(token, payment_id)
+        
+        # 3. Handle Already Executed
+        if resp.get('statusCode') != '0000':
+            query_resp = bkash.query_payment(token, payment_id)
+            if query_resp.get('transactionStatus') == 'Completed':
+                resp = query_resp
+            else:
+                return render_template('admin_payment_failed.html', error_message=resp.get('statusMessage'))
+
+        # 4. Success Logic
+        if resp.get('statusCode') == '0000' or resp.get('transactionStatus') == 'Completed':
+            trx_id = resp.get('trxID')
+            amount = resp.get('amount', '0.00')
+            
+            # (Note: DB update happens via the Desktop App's verification dialog mostly, 
+            # but we can optionally update here too if needed. 
+            # For now, we just confirm success to the user.)
+            
+            return render_template('admin_payment_success.html', trx_id=trx_id, amount=amount)
+            
+        else:
+            return render_template('admin_payment_failed.html', error_message=resp.get('statusMessage'))
+            
+    except Exception as e:
+        print(f"Admin Callback Error: {e}")
+        return render_template('admin_payment_failed.html', error_message=str(e))
 # --- ADD THIS NEAR YOUR OTHER ROUTES ---
 @app.route('/health')
 def health_check():
@@ -4957,6 +5006,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
