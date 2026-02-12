@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status | ISP Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .hero-section {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white; padding: 60px 0; margin-bottom: 40px;
+        }
+        .status-card {
+            border: 1px solid #e5e7eb; border-radius: 10px; background: white;
+            padding: 20px; transition: transform 0.2s; height: 100%;
+        }
+        .status-indicator {
+            width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px;
+        }
+        .indicator-green { background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+        .indicator-orange { background-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+        
+        .timeline { border-left: 2px solid #e5e7eb; padding-left: 25px; margin-left: 10px; margin-top: 30px; }
+        .timeline-item { position: relative; margin-bottom: 30px; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -31px; top: 5px;
+            width: 14px; height: 14px; border-radius: 50%; background: #fff;
+            border: 3px solid #3b82f6;
+        }
+        .timeline-date { font-size: 0.85rem; color: #6b7280; font-weight: 600; text-transform: uppercase; }
+        .badge-scheduled { background-color: #e0f2fe; color: #0369a1; }
+        .badge-progress { background-color: #fef3c7; color: #d97706; }
+        .badge-completed { background-color: #d1fae5; color: #059669; }
+    </style>
+</head>
+<body>
+
+    <div class="hero-section text-center">
+        <div class="container">
+            <h1 class="fw-bold mb-2">System Status</h1>
+            <p class="opacity-75 mb-0">Live updates on system performance and maintenance.</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-8 text-center">
+                {% if systems_down > 0 %}
+                    <div class="alert alert-warning border-0 shadow-sm d-inline-block px-4 py-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Partial Outage:</strong> Some systems are currently undergoing maintenance.
+                    </div>
+                {% else %}
+                    <div class="alert alert-success border-0 shadow-sm d-inline-block px-4 py-3">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>All Systems Operational:</strong> Everything is running smoothly.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            {% for service in services %}
+            <div class="col-md-3">
+                <div class="status-card shadow-sm">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="fw-bold mb-0 text-dark">{{ service.name }}</h6>
+                        {% if service.is_maintenance %}
+                            <i class="bi bi-tools text-warning"></i>
+                        {% else %}
+                            <i class="bi bi-check-circle text-success"></i>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator {{ 'indicator-orange' if service.is_maintenance else 'indicator-green' }}"></span>
+                        <span class="small fw-semibold {{ 'text-warning' if service.is_maintenance else 'text-success' }}">
+                            {{ 'Maintenance' if service.is_maintenance else 'Operational' }}
+                        </span>
+                    </div>
+                    {% if service.is_maintenance %}
+                        <div class="mt-3 pt-3 border-top small text-muted">
+                            Expected back: <br><strong>{{ service.end_time }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h4 class="fw-bold mb-4">Maintenance Log</h4>
+                
+                <div class="card border-0 shadow-sm p-4">
+                    <div class="timeline">
+                        {% for log in logs %}
+                        <div class="timeline-item">
+                            <div class="timeline-date mb-1">
+                                {{ log.start_time }}
+                            </div>
+                            <h6 class="fw-bold mb-1">
+                                {{ log.service_name }}
+                                {% if log.status == 'In Progress' %}
+                                    <span class="badge badge-progress ms-2">In Progress</span>
+                                {% elif log.status == 'Scheduled' %}
+                                    <span class="badge badge-scheduled ms-2">Scheduled</span>
+                                {% else %}
+                                    <span class="badge badge-completed ms-2">Completed</span>
+                                {% endif %}
+                            </h6>
+                            <p class="text-muted small mb-0">{{ log.description }}</p>
+                        </div>
+                        {% else %}
+                            <p class="text-muted">No recent maintenance activity.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="/" class="text-decoration-none text-muted small">← Back to Home</a>
+        </div>
+    </div>
+
+</body>
+</html>
