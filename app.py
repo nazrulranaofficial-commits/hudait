@@ -4949,9 +4949,6 @@ def bkash_saas_callback():
             trx_id = resp.get('trxID')
             amount = resp.get('amount', '0.00')
             
-            # (Database updating logic remains here - it happens automatically via the Desktop App's verification dialog too, 
-            # but doing it here is good redundancy)
-            
             # --- RENDER SUCCESS PAGE ---
             return render_template('admin_payment_success.html', trx_id=trx_id, amount=amount)
             
@@ -5003,6 +5000,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
