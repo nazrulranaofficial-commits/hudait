@@ -4915,49 +4915,6 @@ def service_worker():
     return response
 # In your app.py
 
-@app.route('/payment/bkash/saas-callback')
-def bkash_saas_callback():
-    """Callback for SaaS Plan bKash Payments (From ISP Admin App)"""
-    payment_id = request.args.get('paymentID')
-    status = request.args.get('status')
-    
-    # 1. Handle Immediate Cancellation/Failure
-    if not payment_id or status != 'success':
-        return render_template('admin_payment_failed.html', error_message="Payment process was cancelled or failed.")
-
-    saas_settings = get_saas_settings()
-    
-    try:
-        # 2. Verify Payment with bKash API
-        bkash = initialize_bkash(saas_settings)
-        token = bkash.get_token()
-        
-        # Execute (This confirms the money transfer)
-        resp = bkash.execute_payment(token, payment_id)
-        
-        # 3. Handle Already Executed (Double Callback Scenario)
-        if resp.get('statusCode') != '0000':
-            # Check if it was actually successful before (query status)
-            query_resp = bkash.query_payment(token, payment_id)
-            if query_resp.get('transactionStatus') == 'Completed':
-                resp = query_resp # Treat as success
-            else:
-                return render_template('admin_payment_failed.html', error_message=resp.get('statusMessage'))
-
-        # 4. Success Logic
-        if resp.get('statusCode') == '0000' or resp.get('transactionStatus') == 'Completed':
-            trx_id = resp.get('trxID')
-            amount = resp.get('amount', '0.00')
-            
-            # --- RENDER SUCCESS PAGE ---
-            return render_template('admin_payment_success.html', trx_id=trx_id, amount=amount)
-            
-        else:
-            return render_template('admin_payment_failed.html', error_message=resp.get('statusMessage'))
-            
-    except Exception as e:
-        print(f"Callback Exception: {e}")
-        return render_template('admin_payment_failed.html', error_message=str(e))
 # --- ADD THIS NEAR YOUR OTHER ROUTES ---
 @app.route('/health')
 def health_check():
@@ -5000,6 +4957,7 @@ def track_visitor():
 if __name__ == '__main__':
 
     app.run(port=5000)
+
 
 
 
